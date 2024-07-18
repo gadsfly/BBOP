@@ -149,8 +149,8 @@ def find_calib_file(base_folder):
             return os.path.join(base_folder, file_name)
     return None
 
-def generate_jump_video(com_data, base_base_folder, base_folder, jump_indices, graph_title, save_path, cam='Camera1'):
-    label3d_path = find_calib_file(base_base_folder)
+def generate_jump_video(com_data, base_folder, jump_indices, graph_title, save_path, cam='Camera1'):
+    label3d_path = find_calib_file(base_folder)
     video_path = os.path.join(base_folder, 'videos/Camera1/0.mp4')
     vid_title = graph_title
     VID_NAME = vid_title + '.mp4'
@@ -229,6 +229,7 @@ def generate_jump_video(com_data, base_base_folder, base_folder, jump_indices, g
 
 
 def plot_com_all(base_folder, folder_name, perform_jump_indices=False, perform_video_generation=False):
+    base_base_folder = os.path.dirname(os.path.normpath(base_folder))
     graph_title = f'24_07_05_COM_{folder_name}'
     com_folder = os.path.join(base_folder, 'COM_240717_240716weights/predict_results')
     com_path = os.path.join(com_folder, 'com3d.mat')
@@ -247,4 +248,4 @@ def plot_com_all(base_folder, folder_name, perform_jump_indices=False, perform_v
             save_path = os.path.join(com_folder, 'vis')
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
-            generate_jump_video(com_data, base_base_folder, base_folder, jump_indices, graph_title, save_path, cam='Camera1')
+            generate_jump_video(com_data, base_folder, jump_indices, graph_title, save_path, cam='Camera1')
