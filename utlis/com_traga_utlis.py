@@ -6,7 +6,8 @@ import imageio
 import tqdm
 import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
-from projection import *
+# from utlis.projection import *
+from utlis.projection import *
 
 def load_data(file_path):
     data = sio.loadmat(file_path)
@@ -104,18 +105,43 @@ def detect_jumps(com_data, com_folder_save):
 #     plt.show()
 #     plt.close()
 
-def find_missing folders():
-        missing_folders = []
+def find_missing_folders(synced_name_path):
+    missing_folders = []
     for npy_file in os.listdir(synced_name_path):
         if npy_file.endswith('_missing_folders.npy'):
             npy_file_path = os.path.join(synced_name_path, npy_file)
             if os.path.isfile(npy_file_path):
                 npy_missing_folders = np.load(npy_file_path)
                 missing_folders.extend(npy_missing_folders.tolist())
-    print("missing folders found", len(missing_folders))
     return missing_folders
 
-def process_folders(dates, synced_name_path, summ_folder, operation_func):
+def process_folders(dates, synced_name_path, summ_folder, operations):
+    # Retrieve missing folders
+    missing_folders = find_missing_folders(synced_name_path)
+
+    # Print the missing folders to verify
+    print("Missing folders:", len(missing_folders))
+
+    # Process each folder
+    processed_count = 0
+    for date in dates:
+        base_base_folder = os.path.join(summ_folder, date)
+        for folder_name in os.listdir(base_base_folder):
+            base_folder = os.path.join(base_base_folder, folder_name)
+            if os.path.isdir(base_folder):
+                if re.match(r'^\d', folder_name) and base_folder not in missing_folders:
+                    print('Processing folder:', base_folder)
+                    processed_count += 1
+                    for operation_func, params in operations:
+                        if params:
+                            operation_func(base_folder, folder_name, processed_count, **params)
+                        else:
+                            operation_func(base_folder, folder_name, processed_count)
+
+    print("processed folder: ", processed_count)
+
+
+
 
 def find_calib_file(base_folder):
     for file_name in os.listdir(base_folder):
@@ -200,3 +226,25 @@ def generate_jump_video(com_data, base_base_folder, base_folder, jump_indices, g
             
             
             writer.grab_frame()
+
+
+def plot_com_all(base_folder, folder_name, perform_jump_indices=False, perform_video_generation=False):
+    graph_title = f'24_07_05_COM_{folder_name}'
+    com_folder = os.path.join(base_folder, 'COM_240717_240716weights/predict_results')
+    com_path = os.path.join(com_folder, 'com3d.mat')
+    if os.path.exists(com_path):
+        com_folder_save = os.path.join(com_folder, 'vis')
+        if not os.path.exists(com_folder_save):
+            os.makedirs(com_folder_save)
+        
+        com_data = load_data(com_path)
+        plot_3d_trajectory(com_data, graph_title, com_folder_save)
+        
+        if perform_jump_indices:
+            jump_indices = detect_jumps(com_data, com_folder_save)
+        
+        if perform_video_generation:
+            save_path = os.path.join(com_folder, 'vis')
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            generate_jump_video(com_data, base_base_folder, base_folder, jump_indices, graph_title, save_path, cam='Camera1')
