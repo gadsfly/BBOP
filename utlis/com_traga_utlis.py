@@ -229,11 +229,11 @@ def generate_jump_video(com_data, base_folder, jump_indices, graph_title, save_p
             writer.grab_frame()
 
 
-def plot_com_all(base_folder, perform_jump_indices=False, perform_video_generation=False):
+def plot_com_all(base_folder, com_folder_name, perform_jump_indices=False, perform_video_generation=False):
     # base_base_folder = os.path.dirname(os.path.normpath(base_folder))
     folder_name = os.path.basename(os.path.normpath(base_folder))
     graph_title = f'24_07_05_COM_{folder_name}'
-    com_folder = os.path.join(base_folder, 'COM_240716weights/predict_results')
+    com_folder = os.path.join(base_folder, f'{com_folder_name}/predict_results') #COM_240716weights/predict_results
     com_path = os.path.join(com_folder, 'com3d.mat')
     if os.path.exists(com_path):
         com_folder_save = os.path.join(com_folder, 'vis')
@@ -294,6 +294,10 @@ def temp_change_calib_pos_to_0(base_folder):
     print(f"Modified .mat file saved as {new_calib_path}")
 
 
+
+def generate_dannce_vid_seq(base_path, pred_folder, cam, vid_title):
+    video_path = os.path.join(base_path, f'videos/{cam}/0.mp4')
+    label3d_path = find_calib_file(base_path)
 
 
     
