@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
 # from utlis.projection import *
 from utlis.projection import *
+import shutil
 
 def load_data(file_path):
     data = sio.loadmat(file_path)
@@ -134,9 +135,9 @@ def process_folders(dates, synced_name_path, summ_folder, operations):
                     processed_count += 1
                     for operation_func, params in operations:
                         if params:
-                            operation_func(base_folder, folder_name, processed_count, **params)
+                            operation_func(base_folder, **params)
                         else:
-                            operation_func(base_folder, folder_name, processed_count)
+                            operation_func(base_folder)
 
     print("processed folder: ", processed_count)
 
@@ -149,8 +150,8 @@ def find_calib_file(base_folder):
             return os.path.join(base_folder, file_name)
     return None
 
-def generate_jump_video(com_data, base_base_folder, base_folder, jump_indices, graph_title, save_path, cam='Camera1'):
-    label3d_path = find_calib_file(base_base_folder)
+def generate_jump_video(com_data, base_folder, jump_indices, graph_title, save_path, cam='Camera1'):
+    label3d_path = find_calib_file(base_folder)
     video_path = os.path.join(base_folder, 'videos/Camera1/0.mp4')
     vid_title = graph_title
     VID_NAME = vid_title + '.mp4'
@@ -228,9 +229,11 @@ def generate_jump_video(com_data, base_base_folder, base_folder, jump_indices, g
             writer.grab_frame()
 
 
-def plot_com_all(base_folder, folder_name, perform_jump_indices=False, perform_video_generation=False):
+def plot_com_all(base_folder, perform_jump_indices=False, perform_video_generation=False):
+    # base_base_folder = os.path.dirname(os.path.normpath(base_folder))
+    folder_name = os.path.basename(os.path.normpath(base_folder))
     graph_title = f'24_07_05_COM_{folder_name}'
-    com_folder = os.path.join(base_folder, 'COM_240717_240716weights/predict_results')
+    com_folder = os.path.join(base_folder, 'COM_240716weights/predict_results')
     com_path = os.path.join(com_folder, 'com3d.mat')
     if os.path.exists(com_path):
         com_folder_save = os.path.join(com_folder, 'vis')
@@ -247,4 +250,50 @@ def plot_com_all(base_folder, folder_name, perform_jump_indices=False, perform_v
             save_path = os.path.join(com_folder, 'vis')
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
-            generate_jump_video(com_data, base_base_folder, base_folder, jump_indices, graph_title, save_path, cam='Camera1')
+            generate_jump_video(com_data, base_folder, jump_indices, graph_title, save_path, cam='Camera1')
+
+
+def temp_change_calib_pos_to_0(base_folder):
+    for file in os.listdir(base_folder):
+        if file.startswith('0') and file.endswith('.mat'):
+            print("Calibration file starting with '0' already exists. Skipping processing.")
+            return
+    calib_path = find_calib_file(base_folder)
+    if calib_path is None:
+        print("No calib file found.")
+        return
+
+    
+    mat_data = sio.loadmat(calib_path)
+    sync = mat_data["sync"]
+
+    for cam_idx in range(6):
+        camera_key = f'Camera{cam_idx+1}'
+        # print(sync[cam_idx][0]['data_sampleID'][0][0][0])
+        sync[cam_idx][0]['data_sampleID'][0][0][0] = np.nan_to_num(sync[cam_idx][0]['data_sampleID'][0][0][0], nan=0)
+        # print(2)
+        # print(sync[cam_idx][0]['data_sampleID'][0][0][0])
+
+    mat_data["sync"] = sync
+
+    original_filename = os.path.basename(calib_path)
+    new_filename = original_filename.replace('pos', '0')
+    new_calib_path = os.path.join(base_folder, new_filename)
+
+    sio.savemat(new_calib_path, mat_data)
+    
+    # Create a new folder for the original .mat file
+    new_folder = os.path.join(base_folder, 'prev_calib')
+    if not os.path.exists(new_folder):
+        os.makedirs(new_folder)
+    
+    # Move the original .mat file to the new folder
+    shutil.move(calib_path, os.path.join(new_folder, os.path.basename(calib_path)))
+
+    print(f"Original .mat file moved to {new_folder}")
+    print(f"Modified .mat file saved as {new_calib_path}")
+
+
+
+
+    
