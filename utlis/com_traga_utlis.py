@@ -231,7 +231,7 @@ def generate_jump_video(com_data, base_folder, jump_indices, graph_title, save_p
 
 def plot_com_all(base_folder, perform_jump_indices=False, perform_video_generation=False):
     # base_base_folder = os.path.dirname(os.path.normpath(base_folder))
-    folder_name = os.path.basename(os.path.normpath(path))
+    folder_name = os.path.basename(os.path.normpath(base_folder))
     graph_title = f'24_07_05_COM_{folder_name}'
     com_folder = os.path.join(base_folder, 'COM_240716weights/predict_results')
     com_path = os.path.join(com_folder, 'com3d.mat')
