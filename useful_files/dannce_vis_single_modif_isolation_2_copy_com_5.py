@@ -22,20 +22,20 @@ def find_calib_file(base_folder):
         if file_name.endswith('label3d_dannce.mat'):
             return os.path.join(base_folder, file_name)
     return None
-# /
+
 # /hpc/group/tdunn/lq53/dannce_chris_calib/240503rec_240229V1left/result_folder/train_newcom_70frames_100epo/DANNCE/predict_results
 ###############################################################################################################
 base_path =  '/home/lq53/mir_data/24summ/2024_06_26/1686940_left'
 video_path = os.path.join(base_path, 'videos/Camera6/0.mp4')
 label3d_path = find_calib_file(base_path)
-pred_folder = 'DANNCE/predict_results/six_points/non_multi_bryan_240722_full_trained_test_1000frames'
+pred_folder = 'DANNCE/predict_results/arnav_label2'
 # label3d_path = '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_28/1686941_left_right_2/pos_synced_1686941_left_right_2_2024_06_28_1686941_left_label3d_dannce.mat' #calib
 pred_path = os.path.join(base_path, pred_folder, 'smoothed_prediction_AVG0.mat') #  smoothed_prediction_AVG0.mat save_data_AVG0.mat
 N_FRAMES = 1000
 START_FRAME = 0
 ANIMAL= 'mouse20' #'mouse22'
 cam = 'Camera6' 
-vid_title = 'combined_cam6_1000_smoothed'
+vid_title = 'combined_cam6_1000_smooth'
 VID_NAME = vid_title + '.mp4'
 COLOR = connectivity.COLOR_DICT[ANIMAL]
 CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]

@@ -320,13 +320,15 @@ def generate_dannce_vid_seq(base_path, pred_folder, cam="Camera6", N_FRAMES=100,
     avg0 = "save_data_AVG0.mat"
     if smooth:
         pred_path = os.path.join(base_path, pred_folder, smoothed)
+        vid_title = f'combined_{cam}_smoothed'
     else:
         pred_path = os.path.join(base_path, pred_folder, avg0)
+        vid_title = f'combined_{cam}_avg0'
      
     # N_FRAMES = 1000
     # START_FRAME = 0
     ANIMAL= 'mouse20'
-    vid_title = f'combined_{cam}'
+    
     VID_NAME = vid_title + '.mp4'
     COLOR = connectivity.COLOR_DICT[ANIMAL]
     CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]
