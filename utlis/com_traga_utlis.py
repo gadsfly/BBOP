@@ -310,20 +310,20 @@ def adjust_viewport(kpts_2d, margin=70):
     plt.xlim([center_x - margin, center_x + margin])
     plt.ylim([center_y + margin, center_y - margin])
 
-def generate_dannce_vid_seq(base_path, pred_folder, cam="Camera6", N_FRAMES=100, START_FRAME=0, smooth = False):
+def generate_dannce_vid_seq(base_path, pred_folder, pred_name="AVG0", cam="Camera6", N_FRAMES=100, START_FRAME=0, smooth = False):
     ###############################################################################################################
 
     # pred_folder = "DANNCE/predict_results/six_points/non_multi_bryan_240722_full_trained_test_1000frames"
     video_path = os.path.join(base_path, f'videos/{cam}/0.mp4')
     label3d_path = find_calib_file(base_path)
     smoothed = "smoothed_prediction_AVG0.mat"
-    avg0 = "save_data_AVG0.mat"
+    avg0 = f"save_data_{pred_name}.mat"
     if smooth:
         pred_path = os.path.join(base_path, pred_folder, smoothed)
-        vid_title = f'combined_{cam}_smoothed'
+        vid_title = f'combined_{cam}_smoothed_{N_FRAMES}_start{START_FRAME}'
     else:
         pred_path = os.path.join(base_path, pred_folder, avg0)
-        vid_title = f'combined_{cam}_avg0'
+        vid_title = f'combined_{cam}_{pred_name}_{N_FRAMES}_start{START_FRAME}'
      
     # N_FRAMES = 1000
     # START_FRAME = 0
