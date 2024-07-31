@@ -28,7 +28,7 @@ def find_calib_file(base_folder):
 base_path =  '/home/lq53/mir_data/24summ/2024_06_26/1686940_left'
 video_path = os.path.join(base_path, 'videos/Camera6/0.mp4')
 label3d_path = find_calib_file(base_path)
-pred_folder = 'DANNCE/predict_results/240723_mir_label'
+pred_folder = 'DANNCE/predict_results/240726_arnav_label_from_demo'
 # label3d_path = '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_28/1686941_left_right_2/pos_synced_1686941_left_right_2_2024_06_28_1686941_left_label3d_dannce.mat' #calib
 pred_path = os.path.join(base_path, pred_folder, 'smoothed_prediction_AVG0.mat') #  smoothed_prediction_AVG0.mat save_data_AVG0.mat
 N_FRAMES = 1000

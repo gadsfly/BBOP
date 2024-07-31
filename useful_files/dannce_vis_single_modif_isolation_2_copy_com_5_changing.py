@@ -23,20 +23,21 @@ def find_calib_file(base_folder):
         if file_name.endswith('label3d_dannce.mat'):
             return os.path.join(base_folder, file_name)
     return None
-# /home/lq53/mir_data/24summ/2024_06_26/1686940_left/DANNCE/predict_results/240726_mir_label_from_demo
+# /home/lq53/mir_data/24summ/2024_07_19/240605PMC_window2_right2holes_12_14/DANNCE/predict_results/240725mir
+# /home/lq53/mir_data/24summ/2024_07_03/1691486_left_right_habituation/DANNCE/predict_results/240725mir
 # /hpc/group/tdunn/lq53/dannce_chris_calib/240503rec_240229V1left/result_folder/train_newcom_70frames_100epo/DANNCE/predict_results
 ###############################################################################################################
 base_path =  '/home/lq53/mir_data/24summ/2024_06_26/1686940_left'
 video_path = os.path.join(base_path, 'videos/Camera2/0.mp4')
 label3d_path = find_calib_file(base_path)
-pred_folder = 'DANNCE/predict_results/240729_mir_label2_from_arnav'
+pred_folder = 'DANNCE/predict_results/240726_arnav_label_from_demo_medfilt10'
 # label3d_path = '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_28/1686941_left_right_2/pos_synced_1686941_left_right_2_2024_06_28_1686941_left_label3d_dannce.mat' #calib
 pred_path = os.path.join(base_path, pred_folder, 'save_data_AVG0.mat') #  smoothed_prediction_AVG0.mat save_data_AVG0.mat
-N_FRAMES = 500
+N_FRAMES = 100
 START_FRAME = 0
 ANIMAL= 'mouse20' #'mouse22'
 cam = 'Camera2' 
-vid_title = 'combined_cam2_500'
+vid_title = 'combined_cam2_box60_100'
 VID_NAME = vid_title + '.mp4'
 COLOR = connectivity.COLOR_DICT[ANIMAL]
 CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]
@@ -104,30 +105,30 @@ pred_2d_com = {}
 pred_2d_com_box = {}
 
 # # Add the box points around com
-# box_offsets = np.array([[-120, -120, -120], [120, -120, -120], [-120, 120, -120], [120, 120, -120],
-#                         [-120, -120, 120], [120, -120, 120], [-120, 120, 120], [120, 120, 120]])
-# pts_com_with_box = np.concatenate([pts_com[:, np.newaxis, :] + offset for offset in box_offsets], axis=1)
-# # print("com", pts_com)
-# # print("box", pts_com_with_box)
-# pts_com_flat = np.reshape(pts_com_with_box, (-1, 3))
-# # print("pts_com_flat", pts_com_flat.shape)
+box_offsets = np.array([[-60, -60, -60], [-60, -60, 60], [-60, 60, -60], [-60, 60, 60], [60, -60, -60],
+                        [60, -60, 60], [60, 60, -60], [60, 60, 60]])
+pts_com_with_box = np.concatenate([pts_com[:, np.newaxis, :] + offset for offset in box_offsets], axis=1)
+# print("com", pts_com)
+# print("box", pts_com_with_box)
+pts_com_flat = np.reshape(pts_com_with_box, (-1, 3))
+# print("pts_com_flat", pts_com_flat.shape)
 
-# # Project the 3D box points to 2D
-# projpts_com = project_to_2d(pts_com_flat,
-#                             cameras[cam]["K"],
-#                             cameras[cam]["r"],
-#                             cameras[cam]["t"])[:, :2]
+# Project the 3D box points to 2D
+projpts_com = project_to_2d(pts_com_flat,
+                            cameras[cam]["K"],
+                            cameras[cam]["r"],
+                            cameras[cam]["t"])[:, :2]
 
-# projpts_com = distortPoints(projpts_com,
-#                             cameras[cam]["K"],
-#                             np.squeeze(cameras[cam]["RDistort"]),
-#                             np.squeeze(cameras[cam]["TDistort"]))
-# projpts_com = projpts_com.T
-# projpts_com = np.reshape(projpts_com, (N_FRAMES, -1, 2))
-# # projpts_com = projpts_com.reshape(N_FRAMES, -1, 2)
-# pred_2d_com_box[cam] = projpts_com
+projpts_com = distortPoints(projpts_com,
+                            cameras[cam]["K"],
+                            np.squeeze(cameras[cam]["RDistort"]),
+                            np.squeeze(cameras[cam]["TDistort"]))
+projpts_com = projpts_com.T
+projpts_com = np.reshape(projpts_com, (N_FRAMES, -1, 2))
+# projpts_com = projpts_com.reshape(N_FRAMES, -1, 2)
+pred_2d_com_box[cam] = projpts_com
 # print("box", projpts_com)
-# del projpts_com
+del projpts_com
 
 # Get the 2d projection for com
 projpts_com = project_to_2d(pts_com,
@@ -177,15 +178,13 @@ def adjust_viewport(kpts_2d, margin=70):
     plt.ylim([center_y + margin, center_y - margin])
 
 
-# # Define the edges of the box (connectivity)
-# box_edges = [
-#     (0, 1), (1, 3), (3, 2), (2, 0),  # Bottom square
-#     (4, 5), (5, 7), (7, 6), (6, 4),  # Top square
-#     (0, 4), (1, 5), (2, 6), (3, 7)   # Vertical connections
-# ]
+# Define the edges of the box (connectivity)
+box_edges = [
+    (0, 1), (0,2), (0, 4), (1,3), (1,5), (2,3), (2,6), (3, 7), (4,5), (4,6), (5, 7), (6, 7)
+]
 
-# # Define box edge colors (all blue in this case)
-# box_edge_colors = ['blue'] * len(box_edges)
+# Define box edge colors (all blue in this case)
+box_edge_colors = ['blue'] * len(box_edges)
 
 
 
@@ -200,7 +199,7 @@ with writer.saving(fig, os.path.join(save_path, "vis_"+VID_NAME), dpi=300):
 
         # Plot com keypoints
         kpts_2d_com = pred_2d_com[cam][curr_frame]
-        # kpts_2d_comb = pred_2d_com_box[cam][curr_frame]
+        kpts_2d_comb = pred_2d_com_box[cam][curr_frame]
         
         # Zoom in based on keypoints
         adjust_viewport(temp_kpts_2d, margin=450)  # Adjust margin as needed for best fit 150 is good.
@@ -209,13 +208,13 @@ with writer.saving(fig, os.path.join(save_path, "vis_"+VID_NAME), dpi=300):
         
         # Plot com points
         plt.scatter(kpts_2d_com[:, 0], kpts_2d_com[:, 1], marker='.', color='red', linewidths=2, alpha=0.5)
-        # # Plot the box points
-        # plt.scatter(kpts_2d_comb[:, 0], kpts_2d_comb[:, 1], marker='.', color='blue', linewidths=2, alpha=0.5)
-        # # Draw the edges of the box
-        # for color, (index_from, index_to) in zip(box_edge_colors, box_edges):
-        #     xs, ys = [np.array([kpts_2d_comb[index_from, j], kpts_2d_comb[index_to, j]]) for j in range(2)]
-        #     plt.plot(xs, ys, c=color, lw=1)
-        #     del xs, ys
+        # Plot the box points
+        plt.scatter(kpts_2d_comb[:, 0], kpts_2d_comb[:, 1], marker='.', color='blue', linewidths=2, alpha=0.5)
+        # Draw the edges of the box
+        for color, (index_from, index_to) in zip(box_edge_colors, box_edges):
+            xs, ys = [np.array([kpts_2d_comb[index_from, j], kpts_2d_comb[index_to, j]]) for j in range(2)]
+            plt.plot(xs, ys, c=color, lw=1)
+            del xs, ys
 
 
         plt.scatter(kpts_2d[:, 0], kpts_2d[:, 1], marker='.', color='white', linewidths=2, alpha=0.5) #point size

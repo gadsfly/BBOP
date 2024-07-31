@@ -1,0 +1,2 @@
+AnimalID,Sex,Strain,Condition, Prediction_path
+V1240229,Male,C57BL/6J,240503_rec_baseline, /hpc/group/tdunn/lq53/dappy_test/240503_70frames1003epoches/save_data_AVG0.mat
