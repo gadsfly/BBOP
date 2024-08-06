@@ -1,3 +1,8 @@
+import numpy as np
+import scipy.io as sio
+import os
+import copy
+
 def count_leading_nans(arr):
     count = 0
     for val in arr:
@@ -117,3 +122,29 @@ def convert_label(old_calib_path, new_calib_path, label_path, new_label_name):
 
     sio.savemat(save_path, label_data)
     print('converted label data saved to:', save_path) 
+
+
+def process_multiple_sets(data_sets):
+    """
+    Processes multiple sets of data by converting sync and labels.
+
+    Parameters:
+    data_sets (list of dict): Each dict should contain the paths for 'old_calib_path', 'new_calib_name', 'new_calib_path', 'label_path', and 'new_label_name'.
+    """
+    for data in data_sets:
+        old_calib_path = data['old_calib_path']
+        label_path = data['label_path']
+        
+        base_folder = os.path.dirname(old_calib_path)
+        old_calib_name = os.path.basename(old_calib_path)
+        new_calib_name = 'df_converted_' + old_calib_name
+        new_calib_path = os.path.join(base_folder, new_calib_name)
+
+        old_label_name = os.path.basename(label_path)
+        new_label_name = 'df_converted_' + old_label_name
+
+        # Convert sync data
+        convert_sync(old_calib_path, new_calib_name)
+        
+        # Convert label data
+        convert_label(old_calib_path, new_calib_path, label_path, new_label_name)
