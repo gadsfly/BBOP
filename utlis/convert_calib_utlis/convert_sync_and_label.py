@@ -2,6 +2,9 @@ import numpy as np
 import scipy.io as sio
 import os
 import copy
+import shutil
+
+from utlis.com_traga_utlis import find_calib_file
 
 def count_leading_nans(arr):
     count = 0
@@ -36,7 +39,7 @@ def convert_sync(old_calib_path, new_calib_name):
             nan_counts = count_leading_nans(old_data_sampleID)
             # print(f'camera {camera+1} has nan count of {nan_counts}, now starts with {nan_counts+1}')
             new_data_frame = list(range(nan_counts+1,lenn+1))
-            new_sync[camera][0][dff][0][0] = np.array(new_data_frame)
+            new_sync[camera][0][dff][0][0] = np.array(new_data_frame, dtype=np.float64)
     
     base_path = os.path.dirname(old_calib_path)
     save_path = os.path.join(base_path, new_calib_name)
@@ -48,6 +51,9 @@ def convert_sync(old_calib_path, new_calib_name):
 
 
 def replace_elements(A, B, C):
+    A = A.astype(np.float64)
+    B = B.astype(np.float64)
+    C = C.astype(np.float64)
     #replace element of array in C, from A to B. but this method would not handle any nan values in the label....
     # Flatten the input array C to make indexing straightforward
     C_flat = C.flatten()
@@ -84,7 +90,7 @@ def convert_label(old_calib_path, new_calib_path, label_path, new_label_name):
 
         if old_sync_sid[0]==0:
             good_label_sid = labels[camera_idx][0][sid][0][0]
-            valid_label_sid = [x + 1 for x in good_label_sid]
+            valid_label_sid = np.array([x + 1 for x in good_label_sid], dtype=np.float64)
 
     for camera_idx in range(6):
         old_sync_sid = old_sync[camera_idx][0][sid][0][0][0]
@@ -124,7 +130,7 @@ def convert_label(old_calib_path, new_calib_path, label_path, new_label_name):
     print('converted label data saved to:', save_path) 
 
 
-def process_multiple_sets(data_sets):
+def process_calib_and_labels(data_sets):
     """
     Processes multiple sets of data by converting sync and labels.
 
@@ -132,13 +138,25 @@ def process_multiple_sets(data_sets):
     data_sets (list of dict): Each dict should contain the paths for 'old_calib_path', 'new_calib_name', 'new_calib_path', 'label_path', and 'new_label_name'.
     """
     for data in data_sets:
-        old_calib_path = data['old_calib_path']
-        label_path = data['label_path']
-        
-        base_folder = os.path.dirname(old_calib_path)
+        base_path = data['base_path']
+        old_calib_path = find_calib_file(base_path)
+        prev_calib_folder = os.path.join(base_path, 'prev_calib')
+        if not os.path.exists(prev_calib_folder):
+                os.makedirs(prev_calib_folder)
+        if old_calib_path is None:
+            raise FileNotFoundError(f'Calibration file not found in the {base_path}.')
+
+        # Check if calib starts with '0_' then find pos_ in prev_calib
+        if os.path.basename(old_calib_path).startswith('0_'):
+            old_calib_path = find_calib_file(prev_calib_folder, prefix='pos_')
+            if old_calib_path is None:
+                raise FileNotFoundError(f'Calibration file not found in the {base_path}/prev_calib.')   
+
         old_calib_name = os.path.basename(old_calib_path)
         new_calib_name = 'df_converted_' + old_calib_name
-        new_calib_path = os.path.join(base_folder, new_calib_name)
+        new_calib_path = os.path.join(base_path, new_calib_name)
+
+        label_path = data['label_path']
 
         old_label_name = os.path.basename(label_path)
         new_label_name = 'df_converted_' + old_label_name
@@ -148,3 +166,23 @@ def process_multiple_sets(data_sets):
         
         # Convert label data
         convert_label(old_calib_path, new_calib_path, label_path, new_label_name)
+
+        # Move the previous calibration file to 'prev_calib' folder
+        shutil.move(old_calib_path, os.path.join(prev_calib_folder, old_calib_name))
+        print(f'removed prior calib files to {prev_calib_folder}')
+
+        
+def process_calibs(data_sets):
+    """
+    Processes multiple sets of data by converting sync and labels.
+
+    Parameters:
+    data_sets (list of dict): Each dict should contain the paths for 'old_calib_path', 'new_calib_name', 'new_calib_path', 'label_path', and 'new_label_name'.
+    """
+    for data in data_sets:
+        old_calib_path = data['old_calib_path']
+        old_calib_name = os.path.basename(old_calib_path)
+        new_calib_name = 'df_converted_' + old_calib_name
+
+        # Convert sync data
+        convert_sync(old_calib_path, new_calib_name)
