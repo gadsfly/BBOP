@@ -167,9 +167,12 @@ def process_calib_and_labels(data_sets):
 
         # Check if calib starts with '0_' then find pos_ in prev_calib
         if os.path.basename(old_calib_path).startswith('0_'):
-            old_calib_path = find_calib_file(prev_calib_folder, prefix='pos_')
-            if old_calib_path is None:
-                raise FileNotFoundError(f'Calibration file not found in the {base_path}/prev_calib.')   
+            raise FileNotFoundError(f'Calibration file not found in the {base_path}.')
+        if os.path.basename(old_calib_path).startswith('df_'):
+            raise FileNotFoundError(f'Calibration file not found in the {base_path}.')
+        #     old_calib_path = find_calib_file(prev_calib_folder)
+        #     if old_calib_path is None:
+        #         raise FileNotFoundError(f'Calibration file not found in the {base_path}/prev_calib.')   
 
         old_calib_name = os.path.basename(old_calib_path)
         new_calib_name = 'df_converted_' + old_calib_name
@@ -186,7 +189,7 @@ def process_calib_and_labels(data_sets):
         # Convert label data
         convert_label(old_calib_path, new_calib_path, label_path, new_label_name)
 
-        # Move the previous calibration file to 'prev_calib' folder
+        # # Move the previous calibration file to 'prev_calib' folder
         shutil.move(old_calib_path, os.path.join(prev_calib_folder, old_calib_name))
         print(f'removed prior calib files to {prev_calib_folder}')
 
@@ -199,9 +202,38 @@ def process_calibs(data_sets):
     data_sets (list of dict): Each dict should contain the paths for 'old_calib_path', 'new_calib_name', 'new_calib_path', 'label_path', and 'new_label_name'.
     """
     for data in data_sets:
-        old_calib_path = data['old_calib_path']
+        base_path = data['base_path']
+        old_calib_path = find_calib_file(base_path)
+        prev_calib_folder = os.path.join(base_path, 'prev_calib')
+        if not os.path.exists(prev_calib_folder):
+                os.makedirs(prev_calib_folder)
+        if old_calib_path is None:
+            raise FileNotFoundError(f'Calibration file not found in the {base_path}.')
+
+        # Check if calib starts with '0_' then find pos_ in prev_calib
+        if os.path.basename(old_calib_path).startswith('0_'):
+            raise FileNotFoundError(f'Calibration file not found in the {base_path}.')
+        if os.path.basename(old_calib_path).startswith('df_'):
+            raise FileNotFoundError(f'Calibration file not found in the {base_path}.')
+        #     old_calib_path = find_calib_file(prev_calib_folder)
+        #     if old_calib_path is None:
+        #         raise FileNotFoundError(f'Calibration file not found in the {base_path}/prev_calib.')   
+
         old_calib_name = os.path.basename(old_calib_path)
         new_calib_name = 'df_converted_' + old_calib_name
+        new_calib_path = os.path.join(base_path, new_calib_name)
+
+        # label_path = data['label_path']
+
+        # old_label_name = os.path.basename(label_path)
+        # new_label_name = 'df_converted_' + old_label_name
 
         # Convert sync data
         convert_sync(old_calib_path, new_calib_name)
+        
+        # Convert label data
+        # convert_label(old_calib_path, new_calib_path, label_path, new_label_name)
+
+        # # Move the previous calibration file to 'prev_calib' folder
+        shutil.move(old_calib_path, os.path.join(prev_calib_folder, old_calib_name))
+        print(f'removed prior calib files to {prev_calib_folder}')
