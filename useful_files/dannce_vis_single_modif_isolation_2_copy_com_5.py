@@ -35,7 +35,7 @@ N_FRAMES = 1000
 START_FRAME = 0
 ANIMAL= 'mouse20' #'mouse22'
 cam = 'Camera2' 
-vid_title = 'combined_cam2_1000'
+vid_title = f'combined_{cam}_{N_FRAMES}_from_{START_FRAME}'
 VID_NAME = vid_title + '.mp4'
 COLOR = connectivity.COLOR_DICT[ANIMAL]
 CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]
@@ -141,7 +141,7 @@ with writer.saving(fig, os.path.join(save_path, "vis_"+VID_NAME), dpi=300):
         temp_kpts_2d_com = np.r_[kpts_2d_com[0:6,:],kpts_2d_com[8:,:]]
         
         # Zoom in based on keypoints
-        adjust_viewport(temp_kpts_2d, margin=450)  # Adjust margin as needed for best fit 150 is good.
+        adjust_viewport(temp_kpts_2d, margin=150)  # Adjust margin as needed for best fit 150 is good.
 
 
         plt.imshow(imgs)
