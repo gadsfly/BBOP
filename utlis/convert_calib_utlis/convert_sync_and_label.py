@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.io as sio
-import os
+import os, re
 import copy
 import shutil
 
@@ -221,7 +221,7 @@ def process_calibs(data_sets):
 
         old_calib_name = os.path.basename(old_calib_path)
         new_calib_name = 'df_converted_' + old_calib_name
-        new_calib_path = os.path.join(base_path, new_calib_name)
+        # new_calib_path = os.path.join(base_path, new_calib_name)
 
         # label_path = data['label_path']
 
@@ -237,3 +237,197 @@ def process_calibs(data_sets):
         # # Move the previous calibration file to 'prev_calib' folder
         shutil.move(old_calib_path, os.path.join(prev_calib_folder, old_calib_name))
         print(f'removed prior calib files to {prev_calib_folder}')
+
+
+def categorize_files(directory):
+    df_files = []
+    offset_files = []
+
+    for f in os.listdir(directory):
+        full_path = os.path.join(directory, f)
+        if f.startswith('df_'):
+            df_files.append(full_path)
+        elif 'offset' in f and f.startswith('pos_'):
+            offset_files.append(full_path)
+
+    return df_files, offset_files
+
+def process_calibs_auto(summ_path):
+    """
+    Processes multiple sets of data by converting sync and labels.
+
+    Parameters:
+    data_sets (list of dict): Each dict should contain the paths for 'old_calib_path', 'new_calib_name', 'new_calib_path', 'label_path', and 'new_label_name'.
+    """
+    matching_folders = [f for f in os.listdir(summ_path) if os.path.isdir(os.path.join(summ_path, f)) and re.match(r'^\d{4}_\d{2}_\d{2}$', f)]
+    if matching_folders == []:
+        print('No qualified folders found')
+        return
+    # print(1)
+    print(matching_folders)
+    processed_folders_path = os.path.join(summ_path, 'processed_folders.txt')
+    reprocess_folders_path = os.path.join(summ_path, 'reprocess_folders.txt')
+
+    processed_folders = None
+    if os.path.exists(processed_folders_path):
+        with open(processed_folders_path, 'r') as f:
+            processed_folders = set(f.read().splitlines())
+
+    for date in matching_folders:
+        # print(2)
+        date_path = os.path.join(summ_path, date)
+        # print(3)
+        if not os.path.exists(date_path):
+            print(f"Date folder {date_path} does not exist. Skipping.")
+            continue
+        for folder_name in os.listdir(date_path):
+            folder_path = os.path.join(date_path, folder_name)
+
+            if processed_folders is not None:
+                if folder_path in processed_folders:
+                    print(f"Skipping already processed folder: {folder_path}")
+                    continue
+
+
+
+            if os.path.isdir(folder_path) and folder_name[0].isdigit():
+                base_path = folder_path
+
+                old_calib_path = find_calib_file(base_path)
+                prev_calib_folder = os.path.join(base_path, 'prev_calib')
+                if not os.path.exists(prev_calib_folder):
+                        os.makedirs(prev_calib_folder)
+                if old_calib_path is None:
+                    print(f'Calibration file not found in the {base_path}. Skipping conversion.')
+                    continue
+                    # raise FileNotFoundError(f'Calibration file not found in the {base_path}.')
+                    
+                if os.path.basename(old_calib_path).startswith('df_'):
+                    # raise FileNotFoundError(f'Calibration file not found in the {base_path}.')
+                    print(f'Calibration already converted {old_calib_path}. Skipping conversion.')
+                    continue
+                #     old_calib_path = find_calib_file(prev_calib_folder)
+                #     if old_calib_path is None:
+                #         raise FileNotFoundError(f'Calibration file not found in the {base_path}/prev_calib.')   
+                
+                old_calib_name = os.path.basename(old_calib_path)
+
+                # Check if calib starts with '0_' then find pos_ in prev_calib
+                if os.path.basename(old_calib_path).startswith('0_'):
+                    if len(os.listdir(prev_calib_folder)) != 1:
+                        df_files2, offset_files = categorize_files(prev_calib_folder)
+                        if df_files2 != []:
+                        # if os.path.basename(prev_old_calib_path).startswith('df_'):
+                            df_path = df_files2[0]
+                            prev_old_calib_name = os.path.basename(df_path) # os.path.basename(prev_old_calib_path)
+                            shutil.move(df_path, os.path.join(base_path, prev_old_calib_name))
+                            print(f'removed df calib file {df_path} to {base_path}')
+                            shutil.move(old_calib_path, os.path.join(prev_calib_folder, old_calib_name))
+                            print(f'removed prior calib files {old_calib_path} to {prev_calib_folder}')
+                        elif offset_files != []:
+                            offset_files_path = offset_files[0]
+                            prev_old_calib_name = os.path.basename(offset_files_path) # os.path.basename(prev_old_calib_path)
+                            shutil.move(offset_files_path, os.path.join(base_path, prev_old_calib_name))
+                            print(f'moved pos file to {base_path}')
+                            shutil.move(old_calib_path, os.path.join(prev_calib_folder, old_calib_name))
+                            print(f'removed prior calib files {old_calib_path} to {prev_calib_folder}')
+                            # print("I'm too lazy to code so you go and move the pos_ for another processing")
+
+                        else:
+                        # print(f"Warning: Expected exactly one calibration file in {prev_calib_folder}, but found {len(os.listdir(prev_calib_folder))}. Skipping conversion.")
+                            print(f"not able to find only one pos, or df. skipping {prev_calib_folder}")
+                            continue
+                        # raise FileNotFoundError(f'Calibration file not found in the {base_path}.')
+                    else: 
+                        prev_old_calib_path = find_calib_file(prev_calib_folder)
+                        if prev_old_calib_path is None:
+                            print(f"No calibration file found in {prev_calib_folder}. Skipping conversion.")
+                            continue
+
+                        if os.path.basename(prev_old_calib_path).startswith('pos_'):
+                            prev_old_calib_name = os.path.basename(prev_old_calib_path)
+                            new_calib_name = 'df_converted_' + prev_old_calib_name
+
+                            convert_sync(prev_old_calib_path, new_calib_name)
+                            print("you will have to mannuly move 0_ and df_ file now hh")
+                            # not that this operation did not move df files, which will cause issues
+                            # # Move the previous calibration file to 'prev_calib' folder
+                            shutil.move(old_calib_path, os.path.join(prev_calib_folder, prev_old_calib_name))
+                            print(f'removed prior calib files {old_calib_path} to {prev_calib_folder}')
+                        else:
+                            print(f'no pos calib find in pre_calib folder in {prev_calib_folder}, skipping')
+                            continue
+                        
+                if os.path.basename(old_calib_path).startswith('pos_'):
+                    old_calib_name = os.path.basename(old_calib_path)
+                
+                    new_calib_name = 'df_converted_' + old_calib_name
+
+                    convert_sync(old_calib_path, new_calib_name)
+                    # # Move the previous calibration file to 'prev_calib' folder
+                    shutil.move(old_calib_path, os.path.join(prev_calib_folder, old_calib_name))
+                    print(f'removed prior calib files {old_calib_path} to {prev_calib_folder}')
+                
+                df_files = [f for f in os.listdir(base_path) if f.startswith('df_')]
+                if len(df_files) == 0 or len(df_files) > 1:
+                    print(f'need to reprocess, {base_path}')
+                    with open(reprocess_folders_path, 'a') as f:
+                        f.write(f"{base_path}\n")
+                        print(f'Saved {base_path} to {reprocess_folders_path}')
+                # if :
+                #     print(f'special attention needed! potentially mannualy process and removal and process again, {base_path}')
+                if len(df_files) == 1:
+                    with open(processed_folders_path, 'a') as f:
+                        f.write(f"{base_path}\n")
+                        print(f'Saved {base_path} to {processed_folders_path}')
+
+
+def check_processed_results(summ_path):
+
+    matching_folders = [f for f in os.listdir(summ_path) if os.path.isdir(os.path.join(summ_path, f)) and re.match(r'^\d{4}_\d{2}_\d{2}$', f)]
+    if matching_folders == []:
+        print('No qualified folders found')
+        return
+    # print(1)
+    print(matching_folders)
+    processed_folders_path = os.path.join(summ_path, 'processed_folders.txt')
+    reprocess_folders_path = os.path.join(summ_path, 'reprocess_folders.txt')
+
+    processed_folders = None
+    if os.path.exists(processed_folders_path):
+        with open(processed_folders_path, 'r') as f:
+            processed_folders = set(f.read().splitlines())
+
+    for date in matching_folders:
+        # print(2)
+        date_path = os.path.join(summ_path, date)
+        # print(3)
+        if not os.path.exists(date_path):
+            # print(f"Date folder {date_path} does not exist. Skipping.")
+            continue
+        for folder_name in os.listdir(date_path):
+            folder_path = os.path.join(date_path, folder_name)
+
+            if processed_folders is not None:
+                if folder_path in processed_folders:
+                    print(f"Skipping already processed folder: {folder_path}")
+                    continue
+            else:
+                print(f'need to be processed: {folder_path}')
+
+
+
+            # if os.path.isdir(folder_path) and folder_name[0].isdigit():
+
+            #     df_files = [f for f in os.listdir(base_path) if f.startswith('df_')]
+            #     if len(df_files) == 0 or len(df_files) > 1:
+            #         print(f'need to reprocess, {base_path}')
+            #         with open(reprocess_folders_path, 'a') as f:
+            #             f.write(f"{base_path}\n")
+            #             print(f'Saved {base_path} to {reprocess_folders_path}')
+            #     # if :
+            #     #     print(f'special attention needed! potentially mannualy process and removal and process again, {base_path}')
+            #     if len(df_files) == 1:
+            #         with open(processed_folders_path, 'a') as f:
+            #             f.write(f"{base_path}\n")
+            #             print(f'Saved {base_path} to {processed_folders_path}')
