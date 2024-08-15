@@ -26,15 +26,22 @@ def find_calib_file(base_folder):
 # /hpc/group/tdunn/lq53/dannce_chris_calib/240503rec_240229V1left/result_folder/train_newcom_70frames_100epo/DANNCE/predict_results
 ###############################################################################################################
 base_path =  '/home/lq53/mir_data/24summ/2024_06_26/1686940_left'
-video_path = os.path.join(base_path, 'videos/Camera2/0.mp4')
-label3d_path = find_calib_file(base_path)
-pred_folder = 'DANNCE/predict_results/240723_mir_label'
-# label3d_path = '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_28/1686941_left_right_2/pos_synced_1686941_left_right_2_2024_06_28_1686941_left_label3d_dannce.mat' #calib
-pred_path = os.path.join(base_path, pred_folder, 'save_data_AVG0.mat') #  smoothed_prediction_AVG0.mat save_data_AVG0.mat
+cam = 'Camera2' 
+# video_path = os.path.join(base_path, 'videos/Camera2/0.mp4')
+
+pred_folder = 'DANNCE/predict_results/df_240809_mirlabelall_100epo_opti_0809com_1000'
 N_FRAMES = 1000
 START_FRAME = 0
+
+##########################################################################
+video_path = os.path.join(base_path, 'videos',cam,'0.mp4')
+label3d_path = find_calib_file(base_path)
+# label3d_path = '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_28/1686941_left_right_2/pos_synced_1686941_left_right_2_2024_06_28_1686941_left_label3d_dannce.mat' #calib
+pred_path = os.path.join(base_path, pred_folder, 'save_data_AVG0.mat') #  smoothed_prediction_AVG0.mat save_data_AVG0.mat
+# N_FRAMES = 1000
+# START_FRAME = 0
 ANIMAL= 'mouse20' #'mouse22'
-cam = 'Camera2' 
+# cam = 'Camera2' 
 vid_title = f'combined_{cam}_{N_FRAMES}_from_{START_FRAME}'
 VID_NAME = vid_title + '.mp4'
 COLOR = connectivity.COLOR_DICT[ANIMAL]
