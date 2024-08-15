@@ -25,17 +25,22 @@ def find_calib_file(base_folder):
 
 # /hpc/group/tdunn/lq53/dannce_chris_calib/240503rec_240229V1left/result_folder/train_newcom_70frames_100epo/DANNCE/predict_results
 ###############################################################################################################
-base_path =  '/home/lq53/mir_data/24summ/2024_07_10/1691485_no_hole_habituation_13_59'
-video_path = os.path.join(base_path, 'videos/Camera2/0.mp4')
-label3d_path = find_calib_file(base_path)
-pred_folder = 'COM_sid_final/predict_results'
-# label3d_path = '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_28/1686941_left_right_2/pos_synced_1686941_left_right_2_2024_06_28_1686941_left_label3d_dannce.mat' #calib
-# pred_path = os.path.join(base_path, pred_folder, 'save_data_AVG0.mat') #  smoothed_prediction_AVG0.mat save_data_AVG0.mat
+base_path =  '/home/lq53/mir_data/24summ/2024_06_26/1686940_left'
+cam = 'Camera2' 
+pred_folder = 'COM_df/predict_results/df_labels_240809_mir_full'
+com_file = os.path.join(base_path,pred_folder,'com3d.mat')
 N_FRAMES = 1000
 START_FRAME = 0
+##########################################################################
+
+
+video_path = os.path.join(base_path, 'videos',cam,'0.mp4')
+label3d_path = find_calib_file(base_path)
+# label3d_path = '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_28/1686941_left_right_2/pos_synced_1686941_left_right_2_2024_06_28_1686941_left_label3d_dannce.mat' #calib
+# pred_path = os.path.join(base_path, pred_folder, 'save_data_AVG0.mat') #  smoothed_prediction_AVG0.mat save_data_AVG0.mat
+
 ANIMAL= 'mouse20' #'mouse22'
-cam = 'Camera2' 
-vid_title = 'com_cam2_1000'
+vid_title = f'combined_{cam}_{N_FRAMES}_from_{START_FRAME}'
 VID_NAME = vid_title + '.mp4'
 COLOR = connectivity.COLOR_DICT[ANIMAL]
 CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]
@@ -43,7 +48,7 @@ save_path = os.path.join(base_path, pred_folder, 'vis') #os.path.join(pred_path,
 if not os.path.exists(save_path):
     os.makedirs(save_path)
 
-com_file = os.path.join(base_path,pred_folder,'com3d0.mat')
+
 com_data = sio.loadmat(com_file)
 ###############################################################################################################
 # # load camera parameterss
@@ -141,7 +146,7 @@ with writer.saving(fig, os.path.join(save_path, "vis_"+VID_NAME), dpi=300):
         temp_kpts_2d_com = np.r_[kpts_2d_com[0:6,:],kpts_2d_com[8:,:]]
         
         # Zoom in based on keypoints
-        # adjust_viewport(temp_kpts_2d, margin=450)  # Adjust margin as needed for best fit 150 is good.
+        # adjust_viewport(temp_kpts_2d_com, margin=450)  # Adjust margin as needed for best fit 150 is good.
 
 
         plt.imshow(imgs)
