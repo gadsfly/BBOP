@@ -23,12 +23,11 @@ def find_calib_file(base_folder):
             return os.path.join(base_folder, file_name)
     return None
 
-# /hpc/group/tdunn/lq53/dannce_chris_calib/240503rec_240229V1left/result_folder/train_newcom_70frames_100epo/DANNCE/predict_results
 ###############################################################################################################
 base_path =  '/home/lq53/mir_data/24summ/2024_06_26/1686940_left'
 cam = 'Camera2' 
-pred_folder = 'COM_df/predict_results/df_labels_240815_mir_1_from_demo'
-com_file = os.path.join(base_path,pred_folder,'com3d0.mat')
+pred_folder = 'COM_df/predict_results/df_labels_240816_6comsets_continued'
+com_file = os.path.join(base_path,pred_folder,'com3d.mat')
 N_FRAMES = 1000
 START_FRAME = 0
 ##########################################################################
