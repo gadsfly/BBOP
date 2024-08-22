@@ -231,7 +231,7 @@ def generate_jump_video(com_data, base_folder, jump_indices, graph_title, save_p
 
 def generate_com_video(com_data, base_folder, graph_title, save_path, cam='Camera1'):
     #######
-    N_FRAMES = 10
+    N_FRAMES = 100
     START_FRAME = 0
     #######
     label3d_path = find_calib_file(base_folder)
@@ -312,6 +312,99 @@ def generate_com_video(com_data, base_folder, graph_title, save_path, cam='Camer
             
             
             writer.grab_frame()
+
+# see,s like com thus cannot be loaded here but have to be passed, very weird...
+# def generate_com_video_choice(base_folder, pred_folder, com_name, cam='Camera1'):
+#     #######
+#     N_FRAMES = 100
+#     START_FRAME = 0
+#     print(f"N_FRAMES type: {type(N_FRAMES)}, value: {N_FRAMES}")
+#     print(f"START_FRAME type: {type(START_FRAME)}, value: {START_FRAME}")
+#     #######
+#     label3d_path = find_calib_file(base_folder)
+#     video_path = os.path.join(base_folder, f'videos/{cam}/0.mp4')
+#     vid_title = f'z_com_{cam}_{N_FRAMES}_from_{START_FRAME}'
+#     VID_NAME = vid_title + '.mp4'
+#     save_path = os.path.join(base_folder, pred_folder, 'vis') #os.path.join(pred_path, 'vis')
+#     if not os.path.exists(save_path):
+#         os.makedirs(save_path)
+    
+#     com_file = os.path.join(base_folder,pred_folder,com_name) #'com3d.mat'
+#     com_data = sio.loadmat(com_file)
+
+#     ###############################################################################################################
+#     # load camera parameters
+#     cameras = load_cameras(label3d_path)
+
+#     # get dannce predictions
+#     # pred_3d = sio.loadmat(pred_path)['pred'][START_FRAME: START_FRAME+N_FRAMES]
+#     pts = com_data[START_FRAME: START_FRAME+N_FRAMES] #
+#     # print(len(pts))
+#     # N_FRAMES = len(jump_indices) #jump_indices
+#     # print('N_FRAMES', N_FRAMES)
+#     # compute projections
+#     pred_2d = {}
+#     # pose_3d = np.transpose(pred_3d, (0, 2, 1))
+#     # pts = np.reshape(pose_3d, (-1, 3))
+
+#     # get the 2d projection
+#     projpts = project_to_2d(pts,
+#                             cameras[cam]["K"],
+#                             cameras[cam]["r"],
+#                             cameras[cam]["t"])[:, :2]
+
+#     projpts = distortPoints(projpts,
+#                             cameras[cam]["K"],
+#                             np.squeeze(cameras[cam]["RDistort"]),
+#                             np.squeeze(cameras[cam]["TDistort"]))
+#     projpts = projpts.T
+#     projpts = np.reshape(projpts, (N_FRAMES, -1, 2))
+#     pred_2d[cam] = projpts
+#     print('pred_2d',len(projpts))
+
+
+#     del projpts#, pred_3d
+
+#     # open videos
+#     vids = imageio.get_reader(video_path)
+
+#     # set up video writer
+#     metadata = dict(title='dannce_visualization', artist='Matplotlib')
+#     writer = FFMpegWriter(fps=30, metadata=metadata) # orig fps = 30., sihan uses 20, use 0.5 for com debug
+
+#     ###############################################################################################################
+#     fig = plt.figure()
+#     plt.rcParams['figure.figsize'] = (6, 6)
+
+#     with writer.saving(fig, os.path.join(save_path, "vis_"+VID_NAME), dpi=300):
+#         for curr_frame, i in enumerate(tqdm.tqdm(range(N_FRAMES))): #jump_indices , i
+#             # print(curr_frame, i)
+#             plt.clf()
+#             # grab images
+#             # imgs = vids.get_data(i)
+#             imgs = vids.get_data(i+START_FRAME)
+#             # imgs = [vids.get_data(curr_frame+START_FRAME)][0]
+#             kpts_2d = pred_2d[cam][curr_frame]
+            
+#             # temp_kpts_2d = np.r_[kpts_2d[0:6,:],kpts_2d[8:,:]]
+            
+#             # Zoom in based on keypoints
+#             # adjust_viewport(temp_kpts_2d, margin=150)  # Adjust margin as needed for best fit
+
+
+#             plt.imshow(imgs)
+#             plt.scatter(kpts_2d[:, 0], kpts_2d[:, 1], marker='.', color='white', linewidths=2, alpha=0.5) #point size
+
+#             # for color, (index_from, index_to) in zip(COLOR, CONNECTIVITY):
+#             #     xs, ys = [np.array([kpts_2d[index_from, j], kpts_2d[index_to, j]]) for j in range(2)]
+#             #     plt.plot(xs, ys, c=color, lw=2) #line error
+#             #     del xs, ys
+
+#             plt.title(vid_title)
+#             plt.axis("off")
+            
+            
+#             writer.grab_frame()
 
 
 def plot_com_all(base_folder, com_folder_name, perform_jump_indices=False, perform_video_generation=False):

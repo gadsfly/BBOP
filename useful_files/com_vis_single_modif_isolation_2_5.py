@@ -38,11 +38,11 @@ label3d_path = find_calib_file(base_path)
 # label3d_path = '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_28/1686941_left_right_2/pos_synced_1686941_left_right_2_2024_06_28_1686941_left_label3d_dannce.mat' #calib
 # pred_path = os.path.join(base_path, pred_folder, 'save_data_AVG0.mat') #  smoothed_prediction_AVG0.mat save_data_AVG0.mat
 
-ANIMAL= 'mouse20' #'mouse22'
+# ANIMAL= 'mouse20' #'mouse22'
 vid_title = f'z_combined_{cam}_{N_FRAMES}_from_{START_FRAME}'
 VID_NAME = vid_title + '.mp4'
-COLOR = connectivity.COLOR_DICT[ANIMAL]
-CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]
+# COLOR = connectivity.COLOR_DICT[ANIMAL]
+# CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]
 save_path = os.path.join(base_path, pred_folder, 'vis') #os.path.join(pred_path, 'vis')
 if not os.path.exists(save_path):
     os.makedirs(save_path)
