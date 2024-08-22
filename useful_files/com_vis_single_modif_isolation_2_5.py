@@ -39,7 +39,7 @@ label3d_path = find_calib_file(base_path)
 # pred_path = os.path.join(base_path, pred_folder, 'save_data_AVG0.mat') #  smoothed_prediction_AVG0.mat save_data_AVG0.mat
 
 ANIMAL= 'mouse20' #'mouse22'
-vid_title = f'combined_{cam}_{N_FRAMES}_from_{START_FRAME}'
+vid_title = f'z_combined_{cam}_{N_FRAMES}_from_{START_FRAME}'
 VID_NAME = vid_title + '.mp4'
 COLOR = connectivity.COLOR_DICT[ANIMAL]
 CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]
