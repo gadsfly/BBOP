@@ -151,6 +151,9 @@ def find_calib_file(base_folder):
     return None
 
 def generate_jump_video(com_data, base_folder, jump_indices, graph_title, save_path, cam='Camera1'):
+    if jump_indices == []:
+        return
+    
     label3d_path = find_calib_file(base_folder)
     video_path = os.path.join(base_folder, 'videos/Camera1/0.mp4')
     vid_title = graph_title
@@ -166,6 +169,8 @@ def generate_jump_video(com_data, base_folder, jump_indices, graph_title, save_p
     print(len(pts))
     N_FRAMES = len(jump_indices) #jump_indices
     print('N_FRAMES', N_FRAMES)
+    if N_FRAMES ==0:
+        return
     # compute projections
     pred_2d = {}
     # pose_3d = np.transpose(pred_3d, (0, 2, 1))
@@ -237,7 +242,7 @@ def generate_com_video(com_data, base_folder, graph_title, save_path, cam='Camer
     label3d_path = find_calib_file(base_folder)
     video_path = os.path.join(base_folder, f'videos/{cam}/0.mp4')
     vid_title = graph_title
-    VID_NAME = vid_title + '.mp4'
+    VID_NAME = vid_title + 'continued.mp4'
 
     ###############################################################################################################
     # load camera parameters
