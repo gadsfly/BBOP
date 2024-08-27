@@ -26,9 +26,9 @@ def find_calib_file(base_folder):
 ###############################################################################################################
 base_path =  '/home/lq53/mir_data/24summ/2024_06_26/1686940_left'
 cam = 'Camera2' 
-pred_folder = 'COM_df/predict_results/df_labels_240816_6comsets_continued'
-com_file = os.path.join(base_path,pred_folder,'com3d.mat')
-N_FRAMES = 1000
+pred_folder = 'COM_df_z/predict_results/df_z_240816_6comsets_fromdemo_100fr'
+com_file = os.path.join(base_path,pred_folder,'com3d0.mat')
+N_FRAMES = 100
 START_FRAME = 0
 ##########################################################################
 
