@@ -56,7 +56,7 @@ def detect_jumps(com_data, com_folder_save):
     d_magnitude = np.sqrt(dx**2 + dy**2 + dz**2)
 
     # Define a threshold for significant jumps (this can be adjusted based on your data)
-    threshold = np.mean(d_magnitude) + 10 * np.std(d_magnitude) # used to be 2*, but can change
+    threshold = np.mean(d_magnitude) + 6 * np.std(d_magnitude) # used to be 2*, but can change. changed to 10 when started fintuning
 
     # Identify frames with significant jumps
     significant_jumps = d_magnitude > threshold
