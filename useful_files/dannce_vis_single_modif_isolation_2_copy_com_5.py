@@ -29,7 +29,7 @@ base_path =  '/home/lq53/mir_data/24summ/2024_06_26/1686940_left'
 cam = 'Camera2' 
 # video_path = os.path.join(base_path, 'videos/Camera2/0.mp4')
 
-pred_folder = 'DANNCE_df_z/predict_results/240905_selected_300ep_cont'
+pred_folder = 'DANNCE_df_z/predict_results/240909_selected_300ep_cont2'
 N_FRAMES = 1000
 START_FRAME = 0
 
