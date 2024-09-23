@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 import subprocess
 import scipy.io
+import pandas as pd
 
 #updated below function so that it will only take in the first 3 min for calculations...
 def calculate_frame_brightness(video_path, max_frames):
@@ -57,6 +58,8 @@ def process_videos(base_path, cameras, threshold, max_frames):
     plt.ylabel('Average Brightness')
     plt.legend()
     plt.show()
+    
+    print(drop_frames)
 
     return drop_frames
 
