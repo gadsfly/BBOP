@@ -59,7 +59,7 @@ def process_videos(base_path, cameras, threshold, max_frames):
     plt.legend()
     plt.show()
     
-    print(drop_frames)
+    # print(drop_frames)
 
     return drop_frames
 
@@ -131,6 +131,12 @@ def process_sync(base_folder, threshold=3, max_frames=100):
     cameras = [f'Camera{i}' for i in range(1, 7)]
     vi_path = os.path.join(base_folder, 'videos')
     drop_frames = process_videos(vi_path, cameras, threshold, max_frames)
+    print(f"Detected intensity drop frames in {base_folder}:", drop_frames)
+    if any(len(frames) == 0 for frames in drop_frames.values()):
+        print(f"Skipping process_calibration_data for {base_folder} due to missing drop frames")
+        return base_folder
+
+
 
     calib_file = find_calib_file(base_folder)
     calib_nammm = os.path.basename(calib_file)
