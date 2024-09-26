@@ -30,14 +30,6 @@ def is_special_date(folder_name):
     target_date_str = '2024_09_18'
     return folder_name < target_date_str  # Direct string comparison
 
-# Function to find calibration files in subfolders
-def find_calib_file(subfolder_path):
-    """Check for calibration files starting with 'calib'."""
-    for file_name in os.listdir(subfolder_path):
-        if file_name.startswith("calib"):
-            return file_name
-    return None
-
 # # Assign status codes based on the folder, subfolder, and calibration file information
 # def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths, status_mapping):
 #     """Assign status codes for various categories based on the folder and calibration file."""
@@ -66,7 +58,6 @@ def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths):
     """Assign numerical status codes for various categories."""
     z_adjusted_code = 2 if not is_special_date(folder_name) else 0  # NO-NEED or NO
     sync_code = 0  # Default NO
-    label3d_status_code = 0  # Default NO
     mir_generate_param_code = 0  # Default NO
 
     if calib_file is not None:
@@ -74,12 +65,15 @@ def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths):
         if calib_file.startswith("df_") and calib_file.endswith("label3d_dannce.mat"):
             sync_code = 1  # YES
     
+    for file_name in os.listdir(subfolder_path):
+        if file_name.endswith("label3d_dannce.mat.old"):
+            z_adjusted_code = 1
+    
     if subfolder_path in failed_paths:
         sync_code = 3  # FAILED
 
     return {
         'mir_generate_param': mir_generate_param_code,  # Return numerical code
-        'label3d_status': label3d_status_code,  # Return numerical code
         'sync': sync_code,  # Return numerical code
         'z_adjusted': z_adjusted_code  # Return numerical code
     }

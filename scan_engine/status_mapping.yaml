@@ -3,5 +3,4 @@ status_codes:
   1: YES
   2: NO-NEED
   3: FAILED
-  4: PROCESSED
-  5: NOT FOUND
+  4: NOT FOUND
