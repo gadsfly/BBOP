@@ -39,8 +39,31 @@ def find_calib_file(subfolder_path):
     return None
 
 # # Assign status codes based on the folder, subfolder, and calibration file information
-def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths, status_mapping):
-    """Assign status codes for various categories based on the folder and calibration file."""
+# def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths, status_mapping):
+#     """Assign status codes for various categories based on the folder and calibration file."""
+#     z_adjusted_code = 2 if not is_special_date(folder_name) else 0  # NO-NEED or NO
+#     sync_code = 0  # Default NO
+#     label3d_status_code = 0  # Default NO
+#     mir_generate_param_code = 0  # Default NO
+
+#     if calib_file is not None:
+#         mir_generate_param_code = 1  # YES
+#         if calib_file.startswith("df_") and calib_file.endswith("label3d_dannce.mat"):
+#             sync_code = 1  # YES
+    
+#     if subfolder_path in failed_paths:
+#         sync_code = 3  # FAILED
+
+#     return {
+#         'mir_generate_param': get_status_description(mir_generate_param_code, status_mapping),
+#         'label3d_status': get_status_description(label3d_status_code, status_mapping),
+#         'sync': get_status_description(sync_code, status_mapping),
+#         'z_adjusted': get_status_description(z_adjusted_code, status_mapping)
+#     }
+
+# Assign numerical status codes instead of descriptions
+def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths):
+    """Assign numerical status codes for various categories."""
     z_adjusted_code = 2 if not is_special_date(folder_name) else 0  # NO-NEED or NO
     sync_code = 0  # Default NO
     label3d_status_code = 0  # Default NO
@@ -55,11 +78,12 @@ def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths, s
         sync_code = 3  # FAILED
 
     return {
-        'mir_generate_param': get_status_description(mir_generate_param_code, status_mapping),
-        'label3d_status': get_status_description(label3d_status_code, status_mapping),
-        'sync': get_status_description(sync_code, status_mapping),
-        'z_adjusted': get_status_description(z_adjusted_code, status_mapping)
+        'mir_generate_param': mir_generate_param_code,  # Return numerical code
+        'label3d_status': label3d_status_code,  # Return numerical code
+        'sync': sync_code,  # Return numerical code
+        'z_adjusted': z_adjusted_code  # Return numerical code
     }
+
 
 # Regex to match date format yyyy_mm_dd
 def match_date_pattern(folder_name):
@@ -73,3 +97,12 @@ def load_parquet(parquet_file):
     table = pq.read_table(parquet_file)
     df = table.to_pandas()
     return df
+
+def load_status_mapping(file_path):
+    """Load status mapping from the YAML file."""
+    with open(file_path, 'r') as file:
+        return yaml.safe_load(file)['status_codes']
+
+def translate_status_code(status_code, status_mapping):
+    """Translate numerical status code to human-readable string."""
+    return status_mapping.get(status_code, "UNKNOWN")
