@@ -4,7 +4,7 @@ import re
 # import pandas as pd
 # from datetime import datetime
 import pyarrow.parquet as pq
-from concurrent.futures import ThreadPoolExecutor, as_completed
+# from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Function to load the universal status mapping from a YAML file
 def load_status_mapping(file_path):
@@ -33,7 +33,7 @@ def is_special_date(folder_name):
     return folder_name < target_date_str  # Direct string comparison
 
 # # Assign status codes based on the folder, subfolder, and calibration file information
-# def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths, status_mapping):
+# def assign_status_codes_cha(folder_name, subfolder_path, calib_file, failed_paths, status_mapping):
 #     """Assign status codes for various categories based on the folder and calibration file."""
 #     z_adjusted_code = 2 if not is_special_date(folder_name) else 0  # NO-NEED or NO
 #     sync_code = 0  # Default NO
@@ -56,30 +56,58 @@ def is_special_date(folder_name):
 #     }
 
 # Assign numerical status codes instead of descriptions
-def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths):
-    """Assign numerical status codes for various categories."""
-    z_adjusted_code = 2 if not is_special_date(folder_name) else 0  # NO-NEED or NO
-    sync_code = 0  # Default NO
-    mir_generate_param_code = 0  # Default NO
+# def assign_status_codes_numb(folder_name, subfolder_path, calib_file, failed_paths):
+#     """Assign numerical status codes for various categories."""
+#     z_adjusted_code = 2 if not is_special_date(folder_name) else 0  # NO-NEED or NO
+#     sync_code = 0  # Default NO
+#     mir_generate_param_code = 0  # Default NO
 
-    if calib_file is not None:
-        mir_generate_param_code = 1  # YES
-        if calib_file.startswith("df_") and calib_file.endswith("label3d_dannce.mat"):
-            sync_code = 1  # YES
+#     if calib_file is not None:
+#         mir_generate_param_code = 1  # YES
+#         if calib_file.startswith("df_") and calib_file.endswith("label3d_dannce.mat"):
+#             sync_code = 1  # YES
     
-    for file_name in os.listdir(subfolder_path):
-        if file_name.endswith("label3d_dannce.mat.old"):
-            z_adjusted_code = 1
+#     for file_name in os.listdir(subfolder_path):
+#         if file_name.endswith("label3d_dannce.mat.old"):
+#             z_adjusted_code = 1
     
-    if subfolder_path in failed_paths:
-        sync_code = 3  # FAILED
+#     if subfolder_path in failed_paths:
+#         sync_code = 3  # FAILED
 
-    return {
-        'mir_generate_param': mir_generate_param_code,  # Return numerical code
-        'sync': sync_code,  # Return numerical code
-        'z_adjusted': z_adjusted_code  # Return numerical code
-    }
+#     return {
+#         'mir_generate_param': mir_generate_param_code,  # Return numerical code
+#         'sync': sync_code,  # Return numerical code
+#         'z_adjusted': z_adjusted_code  # Return numerical code
+#     }
 
+
+def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths, config):
+    """Assign numerical status codes for various categories based on dynamic config."""
+    status_codes = {}
+
+    for status_field, rules in config.items():
+        # Start with the default value
+        status_code = rules['default']
+
+        # Apply each condition in the rules
+        for condition_rule in rules['conditions']:
+            condition = condition_rule['condition']
+            
+            # Check if the condition is met, passing the necessary arguments
+            if 'folder_name' in condition.__code__.co_varnames:
+                if condition(folder_name):
+                    status_code = condition_rule['value']
+            elif 'subfolder_path' in condition.__code__.co_varnames and 'failed_paths' in condition.__code__.co_varnames:
+                if condition(subfolder_path, failed_paths):
+                    status_code = condition_rule['value']
+            elif 'calib_file' in condition.__code__.co_varnames:
+                if condition(calib_file):
+                    status_code = condition_rule['value']
+
+        # Assign the final code to the status field
+        status_codes[status_field] = status_code
+
+    return status_codes
 
 # Regex to match date format yyyy_mm_dd
 def match_date_pattern(folder_name):
