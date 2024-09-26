@@ -1,8 +1,10 @@
 import os
 import yaml
 import re
-import pandas as pd
+# import pandas as pd
+# from datetime import datetime
 import pyarrow.parquet as pq
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Function to load the universal status mapping from a YAML file
 def load_status_mapping(file_path):
@@ -92,11 +94,15 @@ def load_parquet(parquet_file):
     df = table.to_pandas()
     return df
 
-def load_status_mapping(file_path):
-    """Load status mapping from the YAML file."""
-    with open(file_path, 'r') as file:
-        return yaml.safe_load(file)['status_codes']
-
 def translate_status_code(status_code, status_mapping):
     """Translate numerical status code to human-readable string."""
     return status_mapping.get(status_code, "UNKNOWN")
+
+
+# Function to create a timestamped backup of the main Parquet file
+# def backup_parquet_file(parquet_file):
+    # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # backup_file = parquet_file.replace(".parquet", f"_{timestamp}.parquet")
+    # copyfile(parquet_file, backup_file)
+    # print(f"Backup created: {backup_file}")
+    # return backup_file
