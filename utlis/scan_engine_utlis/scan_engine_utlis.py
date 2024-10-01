@@ -8,6 +8,7 @@ import pyarrow.parquet as pq
 
 import pyarrow.dataset as ds  # Import pyarrow.dataset at the top
 
+
 def read_existing_parquet_files(base_folder):
     """
     Read all existing Parquet files under base_folder and return a DataFrame
