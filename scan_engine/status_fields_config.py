@@ -8,7 +8,7 @@ STATUS_FIELDS_CONFIG = {
         'default': 0,
         'conditions': [
             {
-                'condition': lambda calib_file: calib_file is not None,
+                'condition': lambda **kwargs: kwargs['calib_file'] is not None,
                 'value': 1  # YES
             }
         ]
@@ -17,11 +17,11 @@ STATUS_FIELDS_CONFIG = {
         'default': 0,  # Default NO
         'conditions': [
             {
-                'condition': lambda calib_file: calib_file and calib_file.startswith("df_") and calib_file.endswith("label3d_dannce.mat"),
+                'condition': lambda **kwargs: kwargs['calib_file'] and os.path.basename(kwargs['calib_file']).startswith("df_") and kwargs['calib_file'].endswith("label3d_dannce.mat"),
                 'value': 1  # YES
             },
             {
-                'condition': lambda subfolder_path, failed_paths: subfolder_path in failed_paths,
+                'condition': lambda **kwargs: kwargs['subfolder_path'] in kwargs['failed_paths'],
                 'value': 3  # FAILED
             }
         ]
@@ -30,13 +30,14 @@ STATUS_FIELDS_CONFIG = {
         'default': 2,  # Default NO-NEED
         'conditions': [
             {
-                'condition': lambda folder_name: is_special_date(folder_name),
+                'condition': lambda **kwargs: is_special_date(kwargs['folder_name']),
                 'value': 0  # NO
             },
             {
-                'condition': lambda subfolder_path: any(file_name.endswith("label3d_dannce.mat.old") for file_name in os.listdir(subfolder_path)),
+                'condition': lambda **kwargs: any(file_name.endswith("label3d_dannce.mat.old") for file_name in os.listdir(kwargs['subfolder_path'])),
                 'value': 1  # YES
             }
         ]
     }
 }
+

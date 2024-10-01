@@ -1,10 +1,49 @@
 import os
 import yaml
 import re
-# import pandas as pd
+import pandas as pd
 # from datetime import datetime
 import pyarrow.parquet as pq
 # from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import pyarrow.dataset as ds  # Import pyarrow.dataset at the top
+
+def read_existing_parquet_files(base_folder):
+    """
+    Read all existing Parquet files under base_folder and return a DataFrame
+    with 'date_folder', 'rec_file', and 'scan_time'.
+    """
+    try:
+        # Create a dataset from the base folder; PyArrow will automatically recurse into subfolders
+        dataset = ds.dataset(base_folder, format="parquet", exclude_invalid_files=True)
+
+        # Convert the dataset to a PyArrow table and then to a Pandas DataFrame
+        table = dataset.to_table(columns=['date_folder', 'rec_file', 'scan_time'])
+        
+        # Convert to Pandas DataFrame for further manipulation
+        df = table.to_pandas()
+
+        return df
+    except Exception as e:
+        print(f"Could not read existing Parquet files: {e}")
+        return pd.DataFrame(columns=['date_folder', 'rec_file', 'scan_time'])
+
+def read_all_parquet_files(base_folder):
+    """
+    Efficiently read all Parquet files from the date folder structure using PyArrow's Dataset,
+    and return a combined DataFrame.
+    """
+    # Create a dataset from the base folder; PyArrow will automatically recurse into subfolders
+    dataset = ds.dataset(base_folder, format="parquet", exclude_invalid_files=True)
+
+    # Convert the dataset to a PyArrow table and then to a Pandas DataFrame
+    table = dataset.to_table()
+
+    # Convert to Pandas DataFrame for further manipulation
+    df = table.to_pandas()
+
+    return df
+
 
 # Function to load the universal status mapping from a YAML file
 def load_status_mapping(file_path):
@@ -80,10 +119,46 @@ def is_special_date(folder_name):
 #         'z_adjusted': z_adjusted_code  # Return numerical code
 #     }
 
+#somehow, some assesment issues are here...
+# def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths, config):
+#     """Assign numerical status codes for various categories based on dynamic config."""
+#     status_codes = {}
+
+#     for status_field, rules in config.items():
+#         # Start with the default value
+#         status_code = rules['default']
+
+#         # Apply each condition in the rules
+#         for condition_rule in rules['conditions']:
+#             condition = condition_rule['condition']
+            
+#             # Check if the condition is met, passing the necessary arguments
+#             if 'folder_name' in condition.__code__.co_varnames:
+#                 if condition(folder_name):
+#                     status_code = condition_rule['value']
+#             elif 'subfolder_path' in condition.__code__.co_varnames and 'failed_paths' in condition.__code__.co_varnames:
+#                 if condition(subfolder_path, failed_paths):
+#                     status_code = condition_rule['value']
+#             elif 'calib_file' in condition.__code__.co_varnames:
+#                 if condition(calib_file):
+#                     status_code = condition_rule['value']
+
+#         # Assign the final code to the status field
+#         status_codes[status_field] = status_code
+
+#     return status_codes
 
 def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths, config):
     """Assign numerical status codes for various categories based on dynamic config."""
     status_codes = {}
+
+    # Prepare the context dictionary
+    context = {
+        'folder_name': folder_name,
+        'subfolder_path': subfolder_path,
+        'calib_file': calib_file,
+        'failed_paths': failed_paths,
+    }
 
     for status_field, rules in config.items():
         # Start with the default value
@@ -92,22 +167,21 @@ def assign_status_codes(folder_name, subfolder_path, calib_file, failed_paths, c
         # Apply each condition in the rules
         for condition_rule in rules['conditions']:
             condition = condition_rule['condition']
-            
-            # Check if the condition is met, passing the necessary arguments
-            if 'folder_name' in condition.__code__.co_varnames:
-                if condition(folder_name):
+            try:
+                if condition(**context):
+                    # print(f"Evaluating condition for {status_field}: {condition.__name__ if hasattr(condition, '__name__') else condition} with context {context}. Result: {condition(**context)}")
                     status_code = condition_rule['value']
-            elif 'subfolder_path' in condition.__code__.co_varnames and 'failed_paths' in condition.__code__.co_varnames:
-                if condition(subfolder_path, failed_paths):
-                    status_code = condition_rule['value']
-            elif 'calib_file' in condition.__code__.co_varnames:
-                if condition(calib_file):
-                    status_code = condition_rule['value']
+            except Exception as e:
+                print(f"Error evaluating condition for {status_field}: {e}")
+                pass
 
         # Assign the final code to the status field
         status_codes[status_field] = status_code
 
     return status_codes
+
+
+
 
 # Regex to match date format yyyy_mm_dd
 def match_date_pattern(folder_name):
