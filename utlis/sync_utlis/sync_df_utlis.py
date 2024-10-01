@@ -1,3 +1,5 @@
+import shutil
+import os
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -139,8 +141,27 @@ def process_sync(base_folder, threshold=3, max_frames=100):
 
 
     calib_file = find_calib_file(base_folder)
+    
+    if calib_file is None:
+        print('no calib file after mir_generate_param is found. please generate it first.')
+        return
+
     calib_nammm = os.path.basename(calib_file)
     folder_name = os.path.basename(base_folder)
     save_path = os.path.join(base_folder,f'df_synced_{folder_name}_{calib_nammm}')
+
+    # Align frames and process calibration data
+    try:
+        align_frames(calib_file, drop_frames, save_path)
+        print(f"Alignment successful for {base_folder}")
+
+        prev_calib_folder = os.path.join(base_folder, 'prev_calib')
+        os.makedirs(prev_calib_folder, exist_ok=True)
+        shutil.move(calib_file, prev_calib_folder)
+        print(f"Moved prior calibration file to {prev_calib_folder}")
+
+    except Exception as e:
+        print(f"Error during alignment: {e}")
+        return
+
     
-    align_frames(calib_file, drop_frames, save_path)
