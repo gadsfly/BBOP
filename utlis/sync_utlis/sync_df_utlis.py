@@ -58,7 +58,7 @@ def process_videos(base_path, cameras, threshold, max_frames):
     plt.ylabel('Average Brightness')
     plt.legend()
     plt.show()
-    
+
     # print(drop_frames)
 
     return drop_frames
