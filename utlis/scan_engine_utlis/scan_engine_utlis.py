@@ -8,7 +8,43 @@ import pyarrow.parquet as pq
 
 import pyarrow.dataset as ds  # Import pyarrow.dataset at the top
 
+def read_all_parquet_files_auto_exclude(base_folder, exclude_columns=None):
+    """
+    Efficiently read all Parquet files from the base folder using PyArrow's Dataset,
+    dynamically excluding specified columns.
+    
+    Parameters:
+    - base_folder (str): Path to the base folder containing Parquet files.
+    - exclude_columns (list): List of column names to exclude from the read. Defaults to None.
+    
+    Returns:
+    - df (pd.DataFrame): Combined DataFrame with specified columns excluded.
+    """
+    # Create a dataset from the base folder
+    dataset = ds.dataset(base_folder, format="parquet", exclude_invalid_files=True)
+    
+    # Get the first fragment's schema to determine available columns
+    first_fragment = next(dataset.get_fragments())
+    schema = first_fragment.physical_schema
+    
+    # List of all available columns
+    all_columns = schema.names
+    
+    # Exclude the columns specified by the user
+    if exclude_columns:
+        columns_to_read = [col for col in all_columns if col not in exclude_columns]
+    else:
+        columns_to_read = all_columns
+    
+    # Read the dataset with the specified columns
+    table = dataset.to_table(columns=columns_to_read)
+    
+    # Convert the table to a Pandas DataFrame
+    df = table.to_pandas()
+    
+    return df
 
+#this function may cause errors...
 def read_existing_parquet_files(base_folder):
     """
     Read all existing Parquet files under base_folder and return a DataFrame
