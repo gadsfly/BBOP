@@ -17,7 +17,6 @@ def sync_entire_folder(base_dir, cluster_base_dir, dry_run=True):
         "--exclude=/*/*/*/experiment/",  # Exclude entire experiment folder
         "--exclude=/*/*/*/My_V4_Miniscope/headOrientation.csv",  # Exclude specific file
         "--exclude=/*/*/*/notes.csv",  # Exclude specific file
-        
         "--exclude=/*/*/*/*"  # Exclude all other files and folders at this level
     ]
 
