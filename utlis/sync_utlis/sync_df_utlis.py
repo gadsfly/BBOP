@@ -82,10 +82,18 @@ def process_videos(base_path, cameras, threshold, max_frames):
     return drop_frames
 
 
-def find_min_frame(dtf):
-    # if 
-    min_frame = min([frame[0] for frame in dtf.values()])
-    return min_frame
+def find_min_frame(drop_frames, camera_keys):
+    for camera_key in camera_keys:
+        if len(drop_frames[camera_key])>1:
+            dif = abs(drop_frames[camera_key][1]-drop_frames[camera_key][0])
+            if dif <2:
+                drop_frame = drop_frames[camera_key][1]
+            else:
+                print("warning, lighting is detected for more than 2 frames, need specific attention.")
+        else:
+            drop_frame = drop_frames[camera_key][0]
+    # min_frame = min([frame[0] for frame in dtf.values()])
+    return drop_frame
 
 def align_frames(calib_file, light_change_frames, save_path):
     """
@@ -104,7 +112,7 @@ def align_frames(calib_file, light_change_frames, save_path):
 
 
     camera_keys = list(light_change_frames.keys())
-    min_frame = find_min_frame(light_change_frames)
+    min_frame = find_min_frame(light_change_frames, camera_keys)
     # print(min_frame)
 
     adjusted_data_frames = {}
