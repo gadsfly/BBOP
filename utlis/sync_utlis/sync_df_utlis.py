@@ -69,7 +69,7 @@ def process_videos(base_path, cameras, threshold, max_frames):
         #     print(f"No significant drop found in first 3 min in {video_path}")
 
         plt.plot(brightness_values, label=camera)
-        time.sleep(1)
+        # time.sleep(1)
     
     plt.title('Frame Brightness Over Time')
     plt.xlabel('Frame Number, first 3 min')
@@ -241,7 +241,7 @@ def process_sync(base_folder, threshold=3, max_frames=100):
         if not is_video_valid(video_file):
             print(f"Skipping {camera} video in {base_folder}: moov atom not found or file is corrupted.")
             return   # Skip processing this folder
-        time.sleep(1)
+        # time.sleep(1)
 
     try:
         drop_frames = process_videos(vi_path, cameras, threshold, max_frames)
