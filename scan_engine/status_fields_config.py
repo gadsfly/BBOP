@@ -26,18 +26,18 @@ STATUS_FIELDS_CONFIG = {
             }
         ]
     },
-    'z_adjusted': {
-        'default': 2,  # Default NO-NEED
-        'conditions': [
-            {
-                'condition': lambda **kwargs: is_special_date(kwargs['folder_name']),
-                'value': 0  # NO
-            },
-            {
-                'condition': lambda **kwargs: any(file_name.endswith("label3d_dannce.mat.old") for file_name in os.listdir(kwargs['subfolder_path'])),
-                'value': 1  # YES
-            }
-        ]
-    }
+    # 'z_adjusted': {
+    #     'default': 2,  # Default NO-NEED
+    #     'conditions': [
+    #         {
+    #             'condition': lambda **kwargs: is_special_date(kwargs['folder_name']),
+    #             'value': 0  # NO
+    #         },
+    #         {
+    #             'condition': lambda **kwargs: any(file_name.endswith("label3d_dannce.mat.old") for file_name in os.listdir(kwargs['subfolder_path'])),
+    #             'value': 1  # YES
+    #         }
+    #     ]
+    # }
 }
 
