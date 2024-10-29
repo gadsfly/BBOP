@@ -83,8 +83,8 @@ def process_videos(base_path, cameras, threshold, max_frames):
 
 
 def find_min_frame(dtf):
-
-    min_frame = min([frame[0] for frame in dtf.values()])
+    min_frame = min(dtf.values()) 
+    # min_frame = min([frame[0] for frame in dtf.values()])
     return min_frame
 
 def align_frames(calib_file, light_change_frames, save_path):
@@ -132,29 +132,36 @@ def align_frames(calib_file, light_change_frames, save_path):
 
                 
     min_frame = find_min_frame(processed_drop_frames)
-    # print(min_frame)
+    print(min_frame)
 
-    adjusted_data_frames = {}
+    # adjusted_data_frames = {}
     for cam_key in camera_keys:
+
         cam_idx = camera_keys.index(cam_key)
         keyyyyy = 'data_frame'  # Assuming this is the key for data frames in your structure
-        print(data_frame)
-        print(sync[cam_idx][0][keyyyyy])
+        # print(1)
+        # import pdb
+        # pdb.set_trace()
+
+        # print(sync[cam_idx][0][keyyyyy])
         data_frame = sync[cam_idx][0][keyyyyy][0][0][0]
-        
-        
+        # print(2)
+        # print(data_frame)
+        # print(sync[cam_idx][0][keyyyyy])
+
         # Convert to DataFrame for easier manipulation
         df = pd.DataFrame(data_frame)
-        
+        # print(3)
         # Adjust frames
         frames_to_remove = processed_drop_frames[cam_key] - min_frame #[0], okay now not just takikng the first thing after some procesing, very cool
         if frames_to_remove > 0:
             df = df.iloc[frames_to_remove:].reset_index(drop=True)
-        
+        # print(4)
         # print(df.to_numpy().flatten())
         # adjusted_data_frames[cam_key] = df
         # sync[cam_idx][0][keyyyyy][0][0][0] = None
         sync[cam_idx][0][keyyyyy][0][0] = [df.to_numpy().flatten()]
+        # print(5)
         # print(sync[cam_idx][0][keyyyyy])
     # return sync[cam_idx][0][keyyyyy][0][0]
     calib_data['sync'] = sync
@@ -290,6 +297,7 @@ def process_sync(base_folder, threshold=3, max_frames=100):
         os.makedirs(prev_calib_folder, exist_ok=True)
         shutil.move(calib_file, prev_calib_folder)
         print(f"Moved prior calibration file to {prev_calib_folder}")
+        return True
         # time.sleep(1)
 
     except Exception as e:

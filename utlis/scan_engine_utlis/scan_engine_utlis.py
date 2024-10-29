@@ -2,13 +2,32 @@ import os
 import yaml
 import re
 import pandas as pd
-# from datetime import datetime
 import pyarrow.parquet as pq
 # from concurrent.futures import ThreadPoolExecutor, as_completed
-
 import pyarrow.dataset as ds  # Import pyarrow.dataset at the top
-
 import pyarrow as pa
+# from datetime import datetime
+
+
+def read_all_parquet_files(base_folder):
+    """
+    Efficiently read all Parquet files from the base folder using PyArrow's Dataset,
+    returning a PyArrow table with all columns.
+    
+    Parameters:
+    - base_folder (str): Path to the base folder containing Parquet files.
+    
+    Returns:
+    - table (pa.Table): Combined PyArrow table with all columns.
+    """
+    # Create a dataset from the base folder
+    dataset = ds.dataset(base_folder, format="parquet", exclude_invalid_files=True)
+    
+    # Read the entire dataset with all columns
+    table = dataset.to_table()
+    
+    return table
+
 
 def read_all_parquet_files_auto_exclude(base_folder, exclude_columns=None):
     """
