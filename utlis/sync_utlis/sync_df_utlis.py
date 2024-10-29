@@ -82,18 +82,10 @@ def process_videos(base_path, cameras, threshold, max_frames):
     return drop_frames
 
 
-def find_min_frame(drop_frames, camera_keys):
-    for camera_key in camera_keys:
-        if len(drop_frames[camera_key])>1:
-            dif = abs(drop_frames[camera_key][1]-drop_frames[camera_key][0])
-            if dif <2:
-                drop_frame = drop_frames[camera_key][1]
-            else:
-                print("warning, lighting is detected for more than 2 frames, need specific attention.")
-        else:
-            drop_frame = drop_frames[camera_key][0]
-    # min_frame = min([frame[0] for frame in dtf.values()])
-    return drop_frame
+def find_min_frame(dtf):
+
+    min_frame = min([frame[0] for frame in dtf.values()])
+    return min_frame
 
 def align_frames(calib_file, light_change_frames, save_path):
     """
@@ -108,26 +100,54 @@ def align_frames(calib_file, light_change_frames, save_path):
     """
     calib_data = scipy.io.loadmat(calib_file)
     sync = calib_data['sync']
-    
+    # import pdb
+    # pdb.set_trace()
+
 
 
     camera_keys = list(light_change_frames.keys())
-    min_frame = find_min_frame(light_change_frames, camera_keys)
+
+    processed_drop_frames = {}
+
+    for cam_key in camera_keys:
+        drop_frames = light_change_frames[cam_key]
+        
+        if len(drop_frames) > 1:
+            # Get the difference between consecutive frames
+            dif = abs(drop_frames[1] - drop_frames[0])
+            
+            if dif < 2:
+                # If the difference is small, use the second frame as the drop frame
+                processed_drop_frames[cam_key] = drop_frames[1]
+            else:
+                # If there is more than one drop frame and the difference is large, raise a warning
+                print(f"Warning: Lighting detected for more than 2 frames in {cam_key}, needs specific attention.")
+                processed_drop_frames[cam_key] = min(drop_frames)  # Choose the minimum frame as a fallback
+        else:
+            # If there is only one drop frame, use that one
+            processed_drop_frames[cam_key] = drop_frames[0]
+
+    # Print or return the processed drop frames
+    print("Processed drop frames:", processed_drop_frames)
+
+                
+    min_frame = find_min_frame(processed_drop_frames)
     # print(min_frame)
 
     adjusted_data_frames = {}
     for cam_key in camera_keys:
         cam_idx = camera_keys.index(cam_key)
         keyyyyy = 'data_frame'  # Assuming this is the key for data frames in your structure
+        print(data_frame)
+        print(sync[cam_idx][0][keyyyyy])
         data_frame = sync[cam_idx][0][keyyyyy][0][0][0]
-        # print(data_frame)
-        # print(sync[cam_idx][0][keyyyyy])
+        
         
         # Convert to DataFrame for easier manipulation
         df = pd.DataFrame(data_frame)
         
         # Adjust frames
-        frames_to_remove = light_change_frames[cam_key][0] - min_frame
+        frames_to_remove = processed_drop_frames[cam_key] - min_frame #[0], okay now not just takikng the first thing after some procesing, very cool
         if frames_to_remove > 0:
             df = df.iloc[frames_to_remove:].reset_index(drop=True)
         
