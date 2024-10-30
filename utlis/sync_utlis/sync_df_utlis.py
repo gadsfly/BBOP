@@ -10,7 +10,7 @@ import pandas as pd
 import time
 
 #updated below function so that it will only take in the first 3 min for calculations...
-def calculate_frame_brightness(video_path, max_frames):
+def calculate_frame_brightness(video_path, max_frames, min_frames):
     # Open the video file
     cap = cv2.VideoCapture(video_path)
     
@@ -18,20 +18,35 @@ def calculate_frame_brightness(video_path, max_frames):
     frame_number = 0
     # max_frames = 500
     
+    # while frame_number < max_frames:
+    #     ret, frame = cap.read()
+    #     if not ret:
+    #         break
+        
+    #     # Convert frame to grayscale
+    #     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+    #     # Calculate the average brightness
+    #     avg_brightness = np.mean(gray_frame)
+    #     frame_brightness.append(avg_brightness)
+        
+    #     frame_number += 1
     while frame_number < max_frames:
         ret, frame = cap.read()
         if not ret:
             break
+
+        # Only process frames within the specified range
+        if frame_number >= min_frames:
+            # Convert frame to grayscale
+            gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            
+            # Calculate the average brightness
+            avg_brightness = np.mean(gray_frame)
+            frame_brightness.append(avg_brightness)
         
-        # Convert frame to grayscale
-        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame_number += 1  
         
-        # Calculate the average brightness
-        avg_brightness = np.mean(gray_frame)
-        frame_brightness.append(avg_brightness)
-        
-        frame_number += 1
-    
     cap.release()
     return frame_brightness
 
@@ -42,13 +57,13 @@ def find_brightness_drop(brightness_values, threshold):
             drops.append(i)
     return drops
 
-def process_videos(base_path, cameras, threshold, max_frames):
+def process_videos(base_path, cameras, threshold, max_frames, min_frame):
     drop_frames = {}
     for camera in cameras:
         video_path = os.path.join(base_path, camera, '0.mp4')
         try:
             # Process the video file and calculate brightness
-            brightness_values = calculate_frame_brightness(video_path, max_frames)
+            brightness_values = calculate_frame_brightness(video_path, max_frames, min_frame)
 
             # Find frames where brightness drops significantly
             drop_frame = find_brightness_drop(brightness_values, threshold)
@@ -248,7 +263,7 @@ def is_video_valid(video_path):
 #         return
 
 
-def process_sync(base_folder, threshold=3, max_frames=100):
+def process_sync(base_folder, threshold=3, max_frames=100, min_frame=0):
     # note that base_folder means rec_folder, 
     # rec folder need to be jointed together before calling this function
     # note that this will take whatever's already in label3d_dannce.mat, 
@@ -271,7 +286,7 @@ def process_sync(base_folder, threshold=3, max_frames=100):
         # time.sleep(1)
 
     try:
-        drop_frames = process_videos(vi_path, cameras, threshold, max_frames)
+        drop_frames = process_videos(vi_path, cameras, threshold, max_frames, min_frame)
         print(f"Detected intensity drop frames in {base_folder}:", drop_frames)
         time.sleep(1)
     except Exception as e:
