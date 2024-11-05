@@ -26,6 +26,38 @@ STATUS_FIELDS_CONFIG = {
             }
         ]
     },
+    
+        'dropf_handle': {
+        'default': 0,  # Default NO
+        'conditions': [
+            {
+                'condition': lambda **kwargs: kwargs['calib_file'] and os.path.basename(kwargs['calib_file']).startswith("df_dh_") and kwargs['calib_file'].endswith("label3d_dannce.mat"),
+                'value': 1  # YES
+            },
+            {
+                'condition': lambda **kwargs: kwargs['subfolder_path'] in kwargs['failed_paths'],
+                'value': 3  # FAILED
+            }
+        ]
+    },
+
+    'com': {
+        'default': 0,  # Default NO
+        'conditions': [
+            {
+                'condition': lambda **kwargs: os.path.exists(os.path.join(kwargs['subfolder_path'], 'COM/predict00')) and
+                                               any(f.startswith('com3d') and f.endswith('.mat')
+                                                   for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'COM/predict00'))),
+                'value': 1  # YES
+            },
+            {
+                'condition': lambda **kwargs: kwargs['subfolder_path'] in kwargs['failed_paths'],
+                'value': 3  # FAILED
+            }
+        ]
+    }
+
+    
     # 'z_adjusted': {
     #     'default': 2,  # Default NO-NEED
     #     'conditions': [
