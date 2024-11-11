@@ -56,10 +56,6 @@ STATUS_FIELDS_CONFIG = {
                                                any(f.startswith('com3d') and f.endswith('.mat')
                                                    for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'COM/predict00'))),
                 'value': 1  # YES
-            },
-            {
-                'condition': lambda **kwargs: kwargs['subfolder_path'] in kwargs['failed_paths'],
-                'value': 3  # FAILED
             }
         ]
     },
