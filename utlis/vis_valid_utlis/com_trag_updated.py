@@ -145,6 +145,7 @@ def analyze_com_trajectory(com_data, save_folder):
     plt.ylabel('Number of Frames')
     plt.tight_layout()
     plt.savefig(os.path.join(save_folder, 'speed_histogram.jpg'), format='jpg')
+    plt.show()
     plt.close()
 
     # Optionally, save the speed data for further analysis
