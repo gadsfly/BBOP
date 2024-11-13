@@ -110,7 +110,17 @@ STATUS_FIELDS_CONFIG = {
             }
         ]
     },
-
+    
+    'dannce': {
+        'default': 0,  # Default NO
+        'conditions': [
+            {
+                'condition': lambda **kwargs: os.path.exists(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00')) and
+                                            'save_data_AVG.mat' in os.listdir(os.path.join(kwargs['subfolder_path'], 'COM/predict00')),
+                'value': 1  # YES
+            }
+        ]
+    },
     # 'social': {
     #     'default': 0,
     #     'conditions': [
