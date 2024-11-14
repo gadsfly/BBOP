@@ -115,7 +115,7 @@ STATUS_FIELDS_CONFIG = {
         'conditions': [
             {
                 'condition': lambda **kwargs: os.path.exists(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00')) and
-                                            'save_data_AVG.mat' in os.listdir(os.path.join(kwargs['subfolder_path'], 'COM/predict00')),
+                                            any(f == 'save_data_AVG.mat' for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00'))),
                 'value': 1  # YES
             }
         ]

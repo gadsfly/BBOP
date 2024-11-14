@@ -376,131 +376,252 @@ def adjust_viewport(kpts_2d, margin=70):
     plt.ylim([center_y + margin, center_y - margin])
 
 
-def generate_dannce_vid_seq(base_path, pred_folder, pred_name="AVG0", cam="Camera6", N_FRAMES=100, START_FRAME=0, smooth = False):
-    ###############################################################################################################
+# def generate_dannce_vid_seq(base_path, pred_name="AVG", cam="Camera6", N_FRAMES=1, START_FRAME=30, smooth = False):
+#     ###############################################################################################################
 
-    # pred_folder = "DANNCE/predict_results/six_points/non_multi_bryan_240722_full_trained_test_1000frames"
-    video_path = os.path.join(base_path, f'videos/{cam}/0.mp4')
-    label3d_path = find_calib_file(base_path)
-    smoothed = "smoothed_prediction_AVG0.mat"
-    avg0 = f"save_data_{pred_name}.mat"
-    if smooth:
-        pred_path = os.path.join(base_path, pred_folder, smoothed)
-        vid_title = f'combined_{cam}_smoothed_{N_FRAMES}_start{START_FRAME}'
-    else:
-        pred_path = os.path.join(base_path, pred_folder, avg0)
-        vid_title = f'combined_{cam}_{pred_name}_{N_FRAMES}_start{START_FRAME}'
+#     pred_folder = "DANNCE/predict00"
+#     video_path = os.path.join(base_path, f'videos/{cam}/0.mp4')
+#     label3d_path = find_calib_file(base_path)
+#     smoothed = "smoothed_prediction_AVG0.mat"
+#     avg0 = f"save_data_{pred_name}.mat"
+#     if smooth:
+#         pred_path = os.path.join(base_path, pred_folder, smoothed)
+#         vid_title = f'combined_{cam}_smoothed_{N_FRAMES}_start{START_FRAME}'
+#     else:
+#         pred_path = os.path.join(base_path, pred_folder, avg0)
+#         vid_title = f'combined_{cam}_{pred_name}_{N_FRAMES}_start{START_FRAME}'
      
-    # N_FRAMES = 1000
-    # START_FRAME = 0
-    ANIMAL= 'mouse20'
+#     # N_FRAMES = 1000
+#     # START_FRAME = 0
+#     ANIMAL= 'mouse20'
     
-    VID_NAME = vid_title + '.mp4'
-    COLOR = connectivity.COLOR_DICT[ANIMAL]
-    CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]
-    save_path = os.path.join(base_path, pred_folder, 'vis') #os.path.join(pred_path, 'vis')
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
+#     VID_NAME = vid_title + '.mp4'
+#     COLOR = connectivity.COLOR_DICT[ANIMAL]
+#     CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]
+#     save_path = os.path.join(base_path, pred_folder, 'vis') #os.path.join(pred_path, 'vis')
+#     if not os.path.exists(save_path):
+#         os.makedirs(save_path)
 
-    com_file = os.path.join(base_path,pred_folder,'com3d_used.mat')
-    com_data = sio.loadmat(com_file)
-    ###############################################################################################################
-    # load camera parameterss
-    cameras = load_cameras(label3d_path)
+#     com_file = os.path.join(base_path,pred_folder,'com3d_used.mat')
+#     com_data = sio.loadmat(com_file)
+#     ###############################################################################################################
+#     # load camera parameterss
+#     cameras = load_cameras(label3d_path)
 
-    # get dannce predictions
-    pred_3d = sio.loadmat(pred_path)['pred'][START_FRAME: START_FRAME+N_FRAMES]
+#     # get dannce predictions
+#     pred_3d = sio.loadmat(pred_path)['pred'][START_FRAME: START_FRAME+N_FRAMES]
 
-    # compute projections
-    pred_2d = {}
-    pose_3d = np.transpose(pred_3d, (0, 2, 1))
-    pts = np.reshape(pose_3d, (-1, 3))
-
-
-    # get the 2d projection
-    projpts = project_to_2d(pts,
-                            cameras[cam]["K"],
-                            cameras[cam]["r"],
-                            cameras[cam]["t"])[:, :2]
-
-    projpts = distortPoints(projpts,
-                            cameras[cam]["K"],
-                            np.squeeze(cameras[cam]["RDistort"]),
-                            np.squeeze(cameras[cam]["TDistort"]))
-    projpts = projpts.T
-    projpts = np.reshape(projpts, (N_FRAMES, -1, 2))
-    pred_2d[cam] = projpts
+#     # compute projections
+#     pred_2d = {}
+#     pose_3d = np.transpose(pred_3d, (0, 2, 1))
+#     pts = np.reshape(pose_3d, (-1, 3))
 
 
-    del projpts, pred_3d
+#     # get the 2d projection
+#     projpts = project_to_2d(pts,
+#                             cameras[cam]["K"],
+#                             cameras[cam]["r"],
+#                             cameras[cam]["t"])[:, :2]
+
+#     projpts = distortPoints(projpts,
+#                             cameras[cam]["K"],
+#                             np.squeeze(cameras[cam]["RDistort"]),
+#                             np.squeeze(cameras[cam]["TDistort"]))
+#     projpts = projpts.T
+#     projpts = np.reshape(projpts, (N_FRAMES, -1, 2))
+#     pred_2d[cam] = projpts
 
 
-    ###############################3
-    # for com
-    pts_com = com_data['com'][START_FRAME: START_FRAME+N_FRAMES]
-    pred_2d_com = {}
-    # Get the 2d projection for com
-    projpts_com = project_to_2d(pts_com,
-                                cameras[cam]["K"],
-                                cameras[cam]["r"],
-                                cameras[cam]["t"])[:, :2]
-
-    projpts_com = distortPoints(projpts_com,
-                                cameras[cam]["K"],
-                                np.squeeze(cameras[cam]["RDistort"]),
-                                np.squeeze(cameras[cam]["TDistort"]))
-    projpts_com = projpts_com.T
-    projpts_com = np.reshape(projpts_com, (N_FRAMES, -1, 2))
-    pred_2d_com[cam] = projpts_com
-    del projpts_com
-    #####################3
+#     del projpts, pred_3d
 
 
-    # open videos
-    vids = imageio.get_reader(video_path)
+#     ###############################3
+#     # for com
+#     pts_com = com_data['com'][START_FRAME: START_FRAME+N_FRAMES]
+#     pred_2d_com = {}
+#     # Get the 2d projection for com
+#     projpts_com = project_to_2d(pts_com,
+#                                 cameras[cam]["K"],
+#                                 cameras[cam]["r"],
+#                                 cameras[cam]["t"])[:, :2]
 
-    # set up video writer
-    metadata = dict(title='combined_visualization', artist='Matplotlib')
-    writer = FFMpegWriter(fps=20, metadata=metadata) # orig fps = 30.
+#     projpts_com = distortPoints(projpts_com,
+#                                 cameras[cam]["K"],
+#                                 np.squeeze(cameras[cam]["RDistort"]),
+#                                 np.squeeze(cameras[cam]["TDistort"]))
+#     projpts_com = projpts_com.T
+#     projpts_com = np.reshape(projpts_com, (N_FRAMES, -1, 2))
+#     pred_2d_com[cam] = projpts_com
+#     del projpts_com
+#     #####################3
 
-    ###############################################################################################################
-    fig = plt.figure()
-    plt.rcParams['figure.figsize'] = (6, 6)
 
+#     # open videos
+#     vids = imageio.get_reader(video_path)
 
+#     # set up video writer
+#     metadata = dict(title='combined_visualization', artist='Matplotlib')
+#     writer = FFMpegWriter(fps=20, metadata=metadata) # orig fps = 30.
+
+#     ###############################################################################################################
+#     fig = plt.figure()
+#     plt.rcParams['figure.figsize'] = (6, 6)
 
 
 
-    with writer.saving(fig, os.path.join(save_path, "vis_"+VID_NAME), dpi=300):
-        for curr_frame in tqdm.tqdm(range(N_FRAMES)):
-            plt.clf()
-            # grab images
-            imgs = [vids.get_data(curr_frame+START_FRAME)][0]
-            kpts_2d = pred_2d[cam][curr_frame]
+
+
+#     with writer.saving(fig, os.path.join(save_path, "vis_"+VID_NAME), dpi=300):
+#         for curr_frame in tqdm.tqdm(range(N_FRAMES)):
+#             plt.clf()
+#             # grab images
+#             imgs = [vids.get_data(curr_frame+START_FRAME)][0]
+#             kpts_2d = pred_2d[cam][curr_frame]
             
-            temp_kpts_2d = np.r_[kpts_2d[0:6,:],kpts_2d[8:,:]]
+#             temp_kpts_2d = np.r_[kpts_2d[0:6,:],kpts_2d[8:,:]]
 
-            # Plot com keypoints
-            kpts_2d_com = pred_2d_com[cam][curr_frame]
-            temp_kpts_2d_com = np.r_[kpts_2d_com[0:6,:],kpts_2d_com[8:,:]]
+#             # Plot com keypoints
+#             kpts_2d_com = pred_2d_com[cam][curr_frame]
+#             temp_kpts_2d_com = np.r_[kpts_2d_com[0:6,:],kpts_2d_com[8:,:]]
             
-            # Zoom in based on keypoints
-            adjust_viewport(temp_kpts_2d, margin=450)  # Adjust margin as needed for best fit 150 is good.
+#             # Zoom in based on keypoints
+#             adjust_viewport(temp_kpts_2d, margin=450)  # Adjust margin as needed for best fit 150 is good.
 
 
-            plt.imshow(imgs)
+#             plt.imshow(imgs)
             
-            # Plot com points
-            plt.scatter(kpts_2d_com[:, 0], kpts_2d_com[:, 1], marker='.', color='red', linewidths=2, alpha=0.5)
+#             # Plot com points
+#             plt.scatter(kpts_2d_com[:, 0], kpts_2d_com[:, 1], marker='.', color='red', linewidths=2, alpha=0.5)
 
-            plt.scatter(temp_kpts_2d[:, 0], temp_kpts_2d[:, 1], marker='.', color='white', linewidths=2, alpha=0.5) #point size
+#             plt.scatter(temp_kpts_2d[:, 0], temp_kpts_2d[:, 1], marker='.', color='white', linewidths=2, alpha=0.5) #point size
 
-            for color, (index_from, index_to) in zip(COLOR, CONNECTIVITY):
-                xs, ys = [np.array([kpts_2d[index_from, j], kpts_2d[index_to, j]]) for j in range(2)]
-                plt.plot(xs, ys, c=color, lw=2) #line error
-                del xs, ys
+#             for color, (index_from, index_to) in zip(COLOR, CONNECTIVITY):
+#                 xs, ys = [np.array([kpts_2d[index_from, j], kpts_2d[index_to, j]]) for j in range(2)]
+#                 plt.plot(xs, ys, c=color, lw=2) #line error
+#                 del xs, ys
 
-            plt.title(vid_title)
-            plt.axis("off")
+#             plt.title(vid_title)
+#             plt.axis("off")
             
-            writer.grab_frame()
+#             writer.grab_frame()
+
+# def generate_dannce_vid_seq(base_path, pred_name="AVG", cam="Camera6", N_FRAMES=1, START_FRAME=30, smooth=False):
+#     pred_folder = "DANNCE/predict00"
+#     video_path = os.path.join(base_path, f'videos/{cam}/0.mp4')
+#     label3d_path = find_calib_file(base_path)
+#     smoothed = "smoothed_prediction_AVG0.mat"
+#     avg0 = f"save_data_{pred_name}.mat"
+#     if smooth:
+#         pred_path = os.path.join(base_path, pred_folder, smoothed)
+#         vid_title = f'combined_{cam}_smoothed_{N_FRAMES}_start{START_FRAME}'
+#     else:
+#         pred_path = os.path.join(base_path, pred_folder, avg0)
+#         vid_title = f'combined_{cam}_{pred_name}_{N_FRAMES}_start{START_FRAME}'
+    
+#     # Define save path
+#     save_path = os.path.join(base_path, pred_folder, 'vis')
+#     if not os.path.exists(save_path):
+#         os.makedirs(save_path)
+
+#     com_file = os.path.join(base_path, pred_folder, 'com3d_used.mat')
+
+#     # Check if com_file exists
+#     if not os.path.exists(com_file):
+#         print(f"Skipping {base_path} due to missing {com_file}")
+#         return
+
+#     # Load the necessary data with error handling
+#     try:
+#         com_data = sio.loadmat(com_file)
+#         pred_3d = sio.loadmat(pred_path)['pred'][START_FRAME: START_FRAME+N_FRAMES]
+#     except Exception as e:
+#         print(f"Error loading data in {base_path}: {e}")
+#         return
+
+#     # Debugging output for shapes
+#     print(f"Initial shape of pred_3d: {pred_3d.shape}")
+#     print(f"Shape of com_data['com']: {com_data['com'].shape}")
+
+#     # Adjust pred_3d to the expected shape if necessary
+#     # if pred_3d.shape[0] == 1 and pred_3d.shape[1] == 1:
+#     #     pred_3d = np.squeeze(pred_3d, axis=(0, 1))  # Remove singleton dimensions
+
+#     # print(f"Adjusted shape of pred_3d: {pred_3d.shape}")
+    
+#     # if pred_3d.shape[1:] != (3, 22):
+#     #     print(f"Skipping {base_path} due to incompatible pred_3d shape: {pred_3d.shape}")
+#     #     return
+
+#     # Proceed with projections and further processing
+#     cameras = load_cameras(label3d_path)
+
+#     try:
+#         # Reshape and project points
+#         pose_3d = np.transpose(pred_3d, (0, 2, 1))
+#         pts = np.reshape(pose_3d, (-1, 3))
+        
+#         projpts = project_to_2d(pts,
+#                                 cameras[cam]["K"],
+#                                 cameras[cam]["r"],
+#                                 cameras[cam]["t"])[:, :2]
+#         projpts = distortPoints(projpts,
+#                                 cameras[cam]["K"],
+#                                 np.squeeze(cameras[cam]["RDistort"]),
+#                                 np.squeeze(cameras[cam]["TDistort"]))
+#         projpts = projpts.T
+#         projpts = np.reshape(projpts, (N_FRAMES, -1, 2))
+#         pred_2d = {cam: projpts}
+        
+#     except ValueError as e:
+#         print("pts", pts)
+#         print(f"Array shape mismatch in {base_path}: {e}")
+#         return
+
+#     # Processing com data for 2D projection
+#     try:
+#         pts_com = com_data['com'][START_FRAME: START_FRAME+N_FRAMES]
+#         projpts_com = project_to_2d(pts_com,
+#                                     cameras[cam]["K"],
+#                                     cameras[cam]["r"],
+#                                     cameras[cam]["t"])[:, :2]
+#         projpts_com = distortPoints(projpts_com,
+#                                     cameras[cam]["K"],
+#                                     np.squeeze(cameras[cam]["RDistort"]),
+#                                     np.squeeze(cameras[cam]["TDistort"]))
+#         projpts_com = projpts_com.T
+#         projpts_com = np.reshape(projpts_com, (N_FRAMES, -1, 2))
+#         pred_2d_com = {cam: projpts_com}
+        
+#     except ValueError as e:
+#         print(f"Error projecting com data in {base_path}: {e}")
+#         return
+
+#     # Open video reader
+#     vids = imageio.get_reader(video_path)
+#     metadata = dict(title='combined_visualization', artist='Matplotlib')
+#     writer = FFMpegWriter(fps=20, metadata=metadata)
+
+#     fig = plt.figure()
+#     plt.rcParams['figure.figsize'] = (6, 6)
+
+#     with writer.saving(fig, os.path.join(save_path, "vis_" + vid_title + '.mp4'), dpi=300):
+#         for curr_frame in tqdm.tqdm(range(N_FRAMES)):
+#             plt.clf()
+#             imgs = vids.get_data(curr_frame + START_FRAME)
+#             kpts_2d = pred_2d[cam][curr_frame]
+#             kpts_2d_com = pred_2d_com[cam][curr_frame]
+            
+#             # Adjust the view to the detected keypoints
+#             adjust_viewport(kpts_2d, margin=450)
+
+#             plt.imshow(imgs)
+#             plt.scatter(kpts_2d_com[:, 0], kpts_2d_com[:, 1], marker='.', color='red', linewidths=2, alpha=0.5)
+#             plt.scatter(kpts_2d[:, 0], kpts_2d[:, 1], marker='.', color='white', linewidths=2, alpha=0.5)
+
+#             for color, (index_from, index_to) in zip(COLOR, CONNECTIVITY):
+#                 xs, ys = [np.array([kpts_2d[index_from, j], kpts_2d[index_to, j]]) for j in range(2)]
+#                 plt.plot(xs, ys, c=color, lw=2)
+
+#             plt.title(vid_title)
+#             plt.axis("off")
+#             writer.grab_frame()
