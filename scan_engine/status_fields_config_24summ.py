@@ -104,10 +104,10 @@ STATUS_FIELDS_CONFIG = {
                                                    for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'COM/predict00'))),
                 'value': 1  # YES
             },
-            {
-                'condition': lambda **kwargs: kwargs['subfolder_path'] in kwargs['failed_paths'],
-                'value': 3  # FAILED
-            }
+            # {
+            #     'condition': lambda **kwargs: kwargs['subfolder_path'] in kwargs['failed_paths'],
+            #     'value': 3  # FAILED
+            # }
         ]
     },
     
@@ -116,11 +116,13 @@ STATUS_FIELDS_CONFIG = {
         'conditions': [
             {
                 'condition': lambda **kwargs: os.path.exists(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00')) and
-                                            'save_data_AVG.mat' in os.listdir(os.path.join(kwargs['subfolder_path'], 'COM/predict00')),
+                                            any(f == 'save_data_AVG.mat' for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00'))),
                 'value': 1  # YES
             }
         ]
     },
+
+
     # 'social': {
     #     'default': 0,
     #     'conditions': [
