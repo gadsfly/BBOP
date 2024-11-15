@@ -25,7 +25,7 @@ def find_calib_file(base_folder):
 # /hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_26/1686940_left/DANNCE/predict_results/six_points_multi_test_0calib
 # /hpc/group/tdunn/lq53/dannce_chris_calib/240503rec_240229V1left/result_folder/train_newcom_70frames_100epo/DANNCE/predict_results
 ###############################################################################################################
-base_path =  '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_26/1686940_left'
+base_path =  ''
 video_path = os.path.join(base_path, 'videos/Camera6/0.mp4')
 label3d_path = find_calib_file(base_path)
 pred_folder = 'DANNCE/predict_results/six_points_multi_test_0calib/non_multi_bryan_240722_full_trained_test_1000frames'
