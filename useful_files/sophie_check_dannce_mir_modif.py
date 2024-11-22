@@ -132,7 +132,7 @@ def dannce_valid(base_path):
     plt.title(os.path.basename(os.path.dirname(base_path)) +'_'+ os.path.basename(base_path))
     plt.legend(loc='best')
     plt.tight_layout()
-    plt.show()
+    
 
     # Save the plot
     save_name = os.path.join(save_path, f"{os.path.basename(os.path.dirname(base_path))}_{os.path.basename(base_path)}.jpg")
@@ -141,8 +141,9 @@ def dannce_valid(base_path):
         print(f"Plot saved as '{save_name}'.")
     except Exception as e:
         print(f"Error saving plot '{save_name}': {e}")
-    finally:
-        plt.close()
+    
+    plt.show()
+    plt.close()
     
 
 if __name__ == '__main__':
