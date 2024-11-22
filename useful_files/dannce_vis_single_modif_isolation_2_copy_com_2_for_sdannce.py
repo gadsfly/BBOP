@@ -25,17 +25,17 @@ def find_calib_file(base_folder):
 # /hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_26/1686940_left/DANNCE/predict_results/six_points_multi_test_0calib
 # /hpc/group/tdunn/lq53/dannce_chris_calib/240503rec_240229V1left/result_folder/train_newcom_70frames_100epo/DANNCE/predict_results
 ###############################################################################################################
-base_path =  '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/Oct3V1/2024_11_13/20240910v1r_cricket_cyliner_test_16_17'
+base_path =  '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/Oct3V1/2024_11_13/240605pmc_righthole_cricket_acrylic_test_15_05'#'/hpc/group/tdunn/Bryan_Rigs/BigOpenField/Oct3V1/2024_11_13/20240910v1r_cricket_cyliner_test_16_17'
 video_path = os.path.join(base_path, 'videos/Camera6/0.mp4')
 label3d_path = find_calib_file(base_path)
 pred_folder = 'DANNCE/predict00'
 # label3d_path = '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_28/1686941_left_right_2/pos_synced_1686941_left_right_2_2024_06_28_1686941_left_label3d_dannce.mat' #calib
 pred_path = os.path.join(base_path, pred_folder, 'save_data_AVG.mat') #  smoothed_prediction_AVG0.mat
 N_FRAMES = 100
-START_FRAME = 0
+START_FRAME = 500
 ANIMAL= 'mouse20' #'mouse22'
 cam = 'Camera6' 
-vid_title = 'combined_cam6_100' #after500
+vid_title = 'combined_cam6_100_after500' #after500
 VID_NAME = vid_title + '.mp4'
 COLOR = connectivity.COLOR_DICT[ANIMAL]
 CONNECTIVITY = connectivity.CONNECTIVITY_DICT[ANIMAL]
@@ -51,7 +51,8 @@ cameras = load_cameras(label3d_path)
 
 # get dannce predictions
 pred_3d = sio.loadmat(pred_path)['pred'][START_FRAME: START_FRAME+N_FRAMES]
-print("Shape of pred_3d:", pred_3d.shape)
+pred_3d = np.squeeze(pred_3d, axis=1) # added for sdannce...
+# print("Shape of pred_3d:", pred_3d.shape)
 
 # compute projections
 pred_2d = {}
