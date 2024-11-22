@@ -42,11 +42,14 @@ STATUS_FIELDS_CONFIG = {
         'default': 0,
         'conditions': [
             {
-                'condition': lambda **kwargs: 'caffeine' in kwargs['subfolder_path'].lower() or 'cf' in kwargs['subfolder_path'].lower(),
+                'condition': lambda **kwargs: any(
+                    term in kwargs['subfolder_path'].lower() for term in ['caffeine', 'caffine', 'cf']
+                ),
                 'value': 1
             }
         ]
     },
+
     'first': {
         'default': 0,
         'conditions': [
@@ -74,6 +77,18 @@ STATUS_FIELDS_CONFIG = {
             }
         ]
     },
+    'miniscope': {
+        'default': 0,
+        'conditions': [
+            {
+                'condition': lambda **kwargs: any(
+                    term in kwargs['subfolder_path'].lower() for term in ['pmc', 'v1']
+                ),
+                'value': 1
+            }
+        ]
+    },
+
     # 'dropf_handle': {
     #     'default': 0,  # Default NO
     #     'conditions': [

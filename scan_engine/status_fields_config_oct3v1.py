@@ -79,7 +79,15 @@ STATUS_FIELDS_CONFIG = {
             {
                 'condition': lambda **kwargs: 'mini' in kwargs['subfolder_path'].lower(),
                 'value': 1  # Set to 1 if "mini" is in the path
+            },
+
+            {
+                'condition': lambda **kwargs: any(
+                    term in kwargs['subfolder_path'].lower() for term in ['pmc', 'v1'] #somtimes this is wrong because sometims i am just running the animal for testing.
+                ),
+                'value': 1
             }
+            
         ]
     },
     'test': {
@@ -95,7 +103,7 @@ STATUS_FIELDS_CONFIG = {
         'default': 0,
         'conditions': [
             {
-                'condition': lambda **kwargs: 'ao' in kwargs['subfolder_path'].upper(),
+                'condition': lambda **kwargs: 'AO' in kwargs['subfolder_path'].upper(),
                 'value': 1  # Set to 1 if "AO" is in the path
             }
         ]
@@ -104,7 +112,7 @@ STATUS_FIELDS_CONFIG = {
         'default': 0,
         'conditions': [
             {
-                'condition': lambda **kwargs: 'bo' in kwargs['subfolder_path'].upper(),
+                'condition': lambda **kwargs: 'BO' in kwargs['subfolder_path'].upper(),
                 'value': 1  # Set to 1 if "BO" is in the path
             }
         ]
