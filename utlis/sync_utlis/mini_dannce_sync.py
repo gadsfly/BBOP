@@ -38,58 +38,58 @@ def find_camera_with_frame_start(rec_path):
     print("No camera with data_frame starting at 1 found.")
     return None
 
-def calculate_frame_brightness(video_path, max_frames, min_frames=0):
-    """
-    Calculates the average brightness of frames in a video.
+# def calculate_frame_brightness(video_path, max_frames, min_frames=0):
+#     """
+#     Calculates the average brightness of frames in a video.
 
-    Parameters:
-    - video_path (str): Path to the video file.
-    - max_frames (int): Maximum number of frames to process.
-    - min_frames (int): Starting frame index for processing.
+#     Parameters:
+#     - video_path (str): Path to the video file.
+#     - max_frames (int): Maximum number of frames to process.
+#     - min_frames (int): Starting frame index for processing.
 
-    Returns:
-    - list: A list of average brightness values for each frame.
-    """
-    # Open the video file
-    cap = cv2.VideoCapture(video_path)
-    frame_brightness = []
-    frame_number = 0
+#     Returns:
+#     - list: A list of average brightness values for each frame.
+#     """
+#     # Open the video file
+#     cap = cv2.VideoCapture(video_path)
+#     frame_brightness = []
+#     frame_number = 0
 
-    while frame_number < max_frames:
-        ret, frame = cap.read()
-        if not ret:
-            break
+#     while frame_number < max_frames:
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
 
-        # Only process frames within the specified range
-        if frame_number >= min_frames:
-            # Convert frame to grayscale
-            gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#         # Only process frames within the specified range
+#         if frame_number >= min_frames:
+#             # Convert frame to grayscale
+#             gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-            # Calculate the average brightness
-            avg_brightness = np.mean(gray_frame)
-            frame_brightness.append(avg_brightness)
+#             # Calculate the average brightness
+#             avg_brightness = np.mean(gray_frame)
+#             frame_brightness.append(avg_brightness)
 
-        frame_number += 1
+#         frame_number += 1
 
-    cap.release()
-    return frame_brightness
+#     cap.release()
+#     return frame_brightness
 
-def find_brightness_drop(brightness_values, threshold):
-    """
-    Finds the indices where a significant brightness drop occurs.
+# def find_brightness_drop(brightness_values, threshold):
+#     """
+#     Finds the indices where a significant brightness drop occurs.
 
-    Parameters:
-    - brightness_values (list): List of brightness values.
-    - threshold (float): The minimum difference to consider as a drop.
+#     Parameters:
+#     - brightness_values (list): List of brightness values.
+#     - threshold (float): The minimum difference to consider as a drop.
 
-    Returns:
-    - list: Indices where brightness drops occur.
-    """
-    drops = []
-    for i in range(1, len(brightness_values)):
-        if brightness_values[i - 1] - brightness_values[i] > threshold:
-            drops.append(i)
-    return drops
+#     Returns:
+#     - list: Indices where brightness drops occur.
+#     """
+#     drops = []
+#     for i in range(1, len(brightness_values)):
+#         if brightness_values[i - 1] - brightness_values[i] > threshold:
+#             drops.append(i)
+#     return drops
 
 def plot_brightness_values(brightness_values, drop_indices, title='Brightness Values', label='Brightness'):
     """
@@ -182,8 +182,8 @@ def sync_videos(
     plot_brightness_values(
         brightness_values_sixcam,
         drop_indices_sixcam,
-        title='Brightness Values - 6Cam',
-        label='6Cam Brightness',
+        title=f'Brightness Values - Cam{camera_number}',
+        label=f'Cam{camera_number} Brightness',
     )
 
     return {
@@ -191,4 +191,5 @@ def sync_videos(
         "sync_frame_sixcam": sync_frame_sixcam,
         "drop_indices_mini": drop_indices_mini,
         "drop_indices_sixcam": drop_indices_sixcam,
+        "cam_numb": camera_number
     }
