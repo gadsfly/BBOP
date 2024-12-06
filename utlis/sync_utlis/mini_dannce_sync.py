@@ -3,9 +3,12 @@
 import os
 import sys
 import cv2
+import csv
 import numpy as np
-import scipy.io
+import pandas as pd
+import scipy.io as sio
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
 sys.path.append(os.path.abspath('../..'))
 from utlis.sync_utlis.sync_df_utlis import (
     find_calib_file,
@@ -27,7 +30,7 @@ def find_camera_with_frame_start(rec_path):
     - int: The camera index with 'data_frame' starting at 1.
     """
     calib_file = find_calib_file(rec_path)
-    calib_data = scipy.io.loadmat(calib_file)
+    calib_data = sio.loadmat(calib_file)
     sync_data = calib_data['sync']
     for cam_idx in range(sync_data.shape[0]):
         cam_sync = sync_data[cam_idx][0]
@@ -193,3 +196,109 @@ def sync_videos(
         "drop_indices_sixcam": drop_indices_sixcam,
         "cam_numb": camera_number
     }
+
+
+def load_mini_timestamps(csv_path):
+    timestamps = []
+    with open(csv_path, 'r') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)  # Skip header row
+        for row in reader:
+            frame_number, timestamp_ms, _ = row
+            # timestamps.append(int(timestamp_ms))
+            timestamps.append(int(timestamp_ms) / 1000.0)  # Convert to seconds
+    return timestamps
+
+def load_sixcam_timestamps(rec_path, camera_number):
+    frametimes_path = f'{rec_path}/videos/Camera{camera_number}/frametimes.npy'
+    if os.path.exists(frametimes_path):
+        return np.load(frametimes_path)
+    else:
+        raise FileNotFoundError(f"Frametimes file not found at {frametimes_path}")
+
+
+def align_miniscope_to_sixcam(resultsss, mini_path, rec_path):
+    # Extract required data
+    sync_frame_mini = resultsss.get("sync_frame_mini")
+    sync_frame_sixcam = resultsss.get("sync_frame_sixcam")
+    drop_indices_mini = resultsss.get("drop_indices_mini")
+    drop_indices_sixcam = resultsss.get("drop_indices_sixcam")
+    camera_number = resultsss.get("cam_numb")
+    
+    # Miniscope webcam timestamps
+    mini_cam_path = os.path.join(mini_path, 'My_First_WebCam')
+    mini_cam_timestamps_p = os.path.join(mini_cam_path, 'timeStamps.csv')
+    mini_cam_vid = os.path.join(mini_cam_path, '0.avi')
+    
+    miniscope_path = os.path.join(mini_path, 'My_V4_Miniscope')
+    miniscope_timestamps_p = os.path.join(miniscope_path, 'timeStamps.csv')
+    
+    # Load timestamps
+    mini_cam_timestamps = load_mini_timestamps(mini_cam_timestamps_p)
+    mini_timstampsss = load_mini_timestamps(miniscope_timestamps_p)
+    sync_time_mini_cam = mini_cam_timestamps[sync_frame_mini]
+    
+    # Load 6Cam timestamps
+    sixcam_timestamps = load_sixcam_timestamps(rec_path, camera_number)
+    sync_time_sixcam = sixcam_timestamps[1][sync_frame_sixcam]
+    
+    # Calculate time offset
+    time_offset = sync_time_mini_cam - sync_time_sixcam
+    print("offset: ", time_offset)
+    adjusted_sixcam_timestamps = sixcam_timestamps[1] + time_offset
+    
+    # Create interpolation function
+    interp_func = interp1d(adjusted_sixcam_timestamps, np.arange(len(adjusted_sixcam_timestamps)), kind='nearest', fill_value='extrapolate')
+    mapped_sixcam_frame_indices = interp_func(mini_timstampsss).astype(int)
+    
+    if len(mapped_sixcam_frame_indices) != len(mini_timstampsss):
+        raise ValueError(
+            f"Length mismatch: {len(mapped_sixcam_frame_indices)} (mapped indices) "
+            f"!= {len(mini_timstampsss)} (miniscope timestamps)."
+        )
+    
+    # Paths for output and data
+    pred_folder = 'DANNCE/predict00'
+    pred_path = os.path.join(rec_path, pred_folder, 'save_data_AVG.mat')
+    com_file = os.path.join(rec_path, pred_folder, 'com3d_used.mat')
+    save_path = os.path.join(rec_path, "MIR_Aligned", 'aligned_data')
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    hdf5_output_path = os.path.join(save_path, 'aligned_predictions.h5')
+    
+    # Load COM data and 3D predictions
+    com_data = sio.loadmat(com_file)['com']
+    pred_3d = sio.loadmat(pred_path)['pred']
+    pred_3d = np.squeeze(pred_3d, axis=1)
+    
+    # Validate and filter data
+    valid_mask = (mapped_sixcam_frame_indices >= 0) & (mapped_sixcam_frame_indices < pred_3d.shape[0])
+    mini_cam_timestamps_s = np.array(mini_timstampsss)[valid_mask]
+    mapped_sixcam_frame_indices = mapped_sixcam_frame_indices[valid_mask]
+    aligned_com = com_data[mapped_sixcam_frame_indices, :]
+    aligned_pred_3d = pred_3d[mapped_sixcam_frame_indices, :, :]
+    N_miniscope_frames = len(mini_cam_timestamps_s)
+    
+    # Flatten 3D predictions
+    aligned_pred_3d_flat = aligned_pred_3d.reshape(N_miniscope_frames, 22 * 3)
+    
+    # Create DataFrame
+    com_cols = ['com_x', 'com_y', 'com_z']
+    kp_cols = [f'kp{kp_idx}_{coord}' for kp_idx in range(1, 23) for coord in ['x', 'y', 'z']]
+    all_columns = com_cols + kp_cols
+    combined_data = np.hstack([aligned_com, aligned_pred_3d_flat])
+    df = pd.DataFrame(data=combined_data, index=mini_cam_timestamps_s, columns=all_columns)
+    df.index.name = 'timestamp_s_mini'
+    
+    # Save to HDF5
+    df.to_hdf(hdf5_output_path, key='df', mode='w')
+    print(f"Aligned data saved to {hdf5_output_path}")
+    
+    # Print shapes
+    print("aligned_pred_3d_flat.shape:", aligned_pred_3d_flat.shape)
+    print("aligned_pred_3d.shape:", aligned_pred_3d.shape)
+    print("aligned_com.shape:", aligned_com.shape)
+
+
+#since prob i will need to adjust some threshold and start and end frame and stuff, cannot automate yet. so now will have to use sync_videos functiona and align function, from above. cannot just write a function to call both or something...
+# def align_and_save_recmini():
