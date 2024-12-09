@@ -206,13 +206,13 @@ def load_mini_timestamps(csv_path):
         for row in reader:
             frame_number, timestamp_ms, _ = row
             # timestamps.append(int(timestamp_ms))
-            timestamps.append(int(timestamp_ms) / 1000.0)  # Convert to seconds
+            timestamps.append(int(timestamp_ms))  # deleted Convert to seconds / 1000.0
     return timestamps
 
 def load_sixcam_timestamps(rec_path, camera_number):
     frametimes_path = f'{rec_path}/videos/Camera{camera_number}/frametimes.npy'
     if os.path.exists(frametimes_path):
-        return np.load(frametimes_path)
+        return np.load(frametimes_path) * 1000 # s to ms
     else:
         raise FileNotFoundError(f"Frametimes file not found at {frametimes_path}")
 
@@ -261,7 +261,7 @@ def align_miniscope_to_sixcam(resultsss, mini_path, rec_path):
     pred_folder = 'DANNCE/predict00'
     pred_path = os.path.join(rec_path, pred_folder, 'save_data_AVG.mat')
     com_file = os.path.join(rec_path, pred_folder, 'com3d_used.mat')
-    save_path = os.path.join(rec_path, "MIR_Aligned", 'aligned_data')
+    save_path = os.path.join(rec_path, "MIR_Aligned_preds")
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     hdf5_output_path = os.path.join(save_path, 'aligned_predictions.h5')
@@ -288,7 +288,7 @@ def align_miniscope_to_sixcam(resultsss, mini_path, rec_path):
     all_columns = com_cols + kp_cols
     combined_data = np.hstack([aligned_com, aligned_pred_3d_flat])
     df = pd.DataFrame(data=combined_data, index=mini_cam_timestamps_s, columns=all_columns)
-    df.index.name = 'timestamp_s_mini'
+    df.index.name = 'timestamp_ms_mini'
     
     # Save to HDF5
     df.to_hdf(hdf5_output_path, key='df', mode='w')
