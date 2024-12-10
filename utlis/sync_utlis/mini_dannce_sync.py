@@ -261,7 +261,7 @@ def align_miniscope_to_sixcam(resultsss, mini_path, rec_path):
     pred_folder = 'DANNCE/predict00'
     pred_path = os.path.join(rec_path, pred_folder, 'save_data_AVG.mat')
     com_file = os.path.join(rec_path, pred_folder, 'com3d_used.mat')
-    save_path = os.path.join(rec_path, "MIR_Aligned_preds")
+    save_path = os.path.join(rec_path, "MIR_Aligned")
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     hdf5_output_path = os.path.join(save_path, 'aligned_predictions.h5')
