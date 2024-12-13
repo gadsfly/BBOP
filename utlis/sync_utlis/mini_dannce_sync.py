@@ -1,8 +1,9 @@
 # video_sync.py
-
+import glob
 import os
 import sys
-import cv2
+# import cv2
+import xarray as xr
 import csv
 import numpy as np
 import pandas as pd
@@ -302,3 +303,85 @@ def align_miniscope_to_sixcam(resultsss, mini_path, rec_path):
 
 #since prob i will need to adjust some threshold and start and end frame and stuff, cannot automate yet. so now will have to use sync_videos functiona and align function, from above. cannot just write a function to call both or something...
 # def align_and_save_recmini():
+
+
+def load_aligneddannce_and_process_ca_data(rec_path, mini_path):
+    """
+    Process calcium imaging data, interpolate to match miniscope timestamps, calculate \u0394F/F, 
+    and save the merged data into an HDF5 file.
+
+    Parameters:
+        rec_path (str): Path to the recording folder containing aligned_predictions.h5.
+        mini_path (str): Path to the miniscope data folder containing timeStamps.csv and .nc file.
+    """
+    # Load miniscope data
+    hdf5_input_path = os.path.join(rec_path, 'MIR_Aligned/aligned_predictions.h5')
+    df = pd.read_hdf(hdf5_input_path, key='df')
+    mini_cam_timestamps = df.index.values
+    print("Data loaded successfully!")
+
+    # Miniscope data paths
+    miniscope_path = os.path.join(mini_path, 'My_V4_Miniscope')
+    miniscope_timestamps_path = os.path.join(miniscope_path, 'timeStamps.csv')
+
+    # Load .nc file containing calcium imaging data
+    nc_files = glob.glob(os.path.join(miniscope_path, '*.nc'))
+    if not nc_files:
+        raise FileNotFoundError("No .nc files found in the specified miniscope path.")
+    ca_file_path = nc_files[0]
+
+    # Load calcium data
+    data = xr.open_dataset(ca_file_path)
+
+    # Load timestamps
+    timestamps = pd.read_csv(miniscope_timestamps_path)
+    ts = timestamps['Time Stamp (ms)'].values  # shape (num_ca_frames,)
+
+    C = data['C'].values  # Calcium signals
+    num_neuron, num_frame = C.shape
+    print("Calcium data shape:", C.shape)
+    print("Timestamps shape:", ts.shape)
+
+    # Interpolate calcium signals to miniscope timestamps
+    C_interpolated = []
+    for i_neuron in range(num_neuron):
+        func = interp1d(ts, C[i_neuron, :], kind='linear', bounds_error=False, fill_value='extrapolate')
+        neuron_interp = func(mini_cam_timestamps)
+        C_interpolated.append(neuron_interp)
+
+    C_interpolated = np.array(C_interpolated)  # shape (num_neuron, N_miniscope_frames)
+    print("Interpolated Ca data shape:", C_interpolated.shape)
+
+    # Calculate \u0394F/F using interpolated calcium data
+    F0_interpolated = np.percentile(C_interpolated, 20, axis=1, keepdims=True)  # shape (num_neuron, 1)
+    dF_F_interpolated = (C_interpolated - F0_interpolated) / F0_interpolated  # shape (num_neuron, N_miniscope_frames)
+    print("\u0394F/F interpolated shape:", dF_F_interpolated.shape)
+
+    # Add calcium and \u0394F/F columns to DataFrame
+    calcium_cols = [f'calcium_roi{i}' for i in range(num_neuron)]
+    dF_F_cols = [f'dF_F_roi{i}' for i in range(num_neuron)]
+
+    # Transpose to match DataFrame format
+    C_interpolated_transposed = C_interpolated.T  # shape (N_miniscope_frames, num_neuron)
+    dF_F_interpolated_transposed = dF_F_interpolated.T  # shape (N_miniscope_frames, num_neuron)
+
+    # Create DataFrames for calcium and \u0394F/F data
+    df_ca = pd.DataFrame(data=C_interpolated_transposed, index=mini_cam_timestamps, columns=calcium_cols)
+    df_dF_F = pd.DataFrame(data=dF_F_interpolated_transposed, index=mini_cam_timestamps, columns=dF_F_cols)
+
+    # Set index name
+    df_ca.index.name = 'timestamp_ms'
+    df_dF_F.index.name = 'timestamp_ms'
+
+    # Merge with the existing DataFrame
+    df_merged = df.join(df_ca, how='inner')
+    df_merged_with_dF_F = df_merged.join(df_dF_F, how='inner')
+
+    print("DataFrame with Ca and \u0394F/F signals merged:")
+    # print(df_merged_with_dF_F.head())
+
+    # Save updated DataFrame
+    updated_hdf5_path = os.path.join(rec_path, 'MIR_Aligned', 'aligned_predictions_with_ca_and_dF_F.h5')
+    df_merged_with_dF_F.to_hdf(updated_hdf5_path, key='df', mode='w')
+    print(f"Updated DataFrame with Ca and \u0394F/F data saved to {updated_hdf5_path}")
+    return df_merged_with_dF_F
