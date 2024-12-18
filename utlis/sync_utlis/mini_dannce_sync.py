@@ -271,6 +271,12 @@ def align_miniscope_to_sixcam(resultsss, mini_path, rec_path):
     com_data = sio.loadmat(com_file)['com']
     pred_3d = sio.loadmat(pred_path)['pred']
     pred_3d = np.squeeze(pred_3d, axis=1)
+
+    if pred_3d.shape[1] == 3 and pred_3d.shape[2] == 22:
+        print(f'pred current shape{pred_3d.shape}')
+        pred_3d = pred_3d.transpose((0, 2, 1))  # Now it's (N_frames, 22, 3)
+        print(f'preds transposed to {pred_3d.shape}')
+
     
     # Validate and filter data
     valid_mask = (mapped_sixcam_frame_indices >= 0) & (mapped_sixcam_frame_indices < pred_3d.shape[0])
@@ -286,6 +292,8 @@ def align_miniscope_to_sixcam(resultsss, mini_path, rec_path):
     # Create DataFrame
     com_cols = ['com_x', 'com_y', 'com_z']
     kp_cols = [f'kp{kp_idx}_{coord}' for kp_idx in range(1, 23) for coord in ['x', 'y', 'z']]
+    # kp_cols = [f'kp{kp_idx}_{coord}' for coord in ['x', 'y', 'z'] for kp_idx in range(1, 23)]
+
     all_columns = com_cols + kp_cols
     combined_data = np.hstack([aligned_com, aligned_pred_3d_flat])
     df = pd.DataFrame(data=combined_data, index=mini_cam_timestamps_s, columns=all_columns)
