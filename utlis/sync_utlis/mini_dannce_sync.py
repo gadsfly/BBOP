@@ -18,7 +18,7 @@ from utlis.sync_utlis.sync_df_utlis import (
 
 
 )
-
+import json
 
 def find_camera_with_frame_start(rec_path):
     """
@@ -299,14 +299,31 @@ def align_miniscope_to_sixcam(resultsss, mini_path, rec_path):
     df = pd.DataFrame(data=combined_data, index=mini_cam_timestamps_s, columns=all_columns)
     df.index.name = 'timestamp_ms_mini'
     
+
+    df['camera_frame_sixcam'] = mapped_sixcam_frame_indices
+
     # Save to HDF5
     df.to_hdf(hdf5_output_path, key='df', mode='w')
     print(f"Aligned data saved to {hdf5_output_path}")
     
+
+    # # ----------------------------
+    # # We'll store both in a JSON file for simplicity.
+    # map_data = {
+    #     "time_offset": float(time_offset),  # ensure it's JSON-serializable
+    #     "mapped_sixcam_frame_indices": mapped_sixcam_frame_indices.tolist()
+    # }
+    # json_mapping_file = os.path.join(save_path, "frame_mapping.json")
+    # with open(json_mapping_file, "w") as f:
+    #     json.dump(map_data, f, indent=2)
+    # print(f"Frame mapping data saved to {json_mapping_file}")
+    # # ----------------------------
+
     # Print shapes
     print("aligned_pred_3d_flat.shape:", aligned_pred_3d_flat.shape)
     print("aligned_pred_3d.shape:", aligned_pred_3d.shape)
     print("aligned_com.shape:", aligned_com.shape)
+    return df
 
 
 #since prob i will need to adjust some threshold and start and end frame and stuff, cannot automate yet. so now will have to use sync_videos functiona and align function, from above. cannot just write a function to call both or something...
@@ -392,4 +409,6 @@ def load_aligneddannce_and_process_ca_data(rec_path, mini_path):
     updated_hdf5_path = os.path.join(rec_path, 'MIR_Aligned', 'aligned_predictions_with_ca_and_dF_F.h5')
     df_merged_with_dF_F.to_hdf(updated_hdf5_path, key='df', mode='w')
     print(f"Updated DataFrame with Ca and \u0394F/F data saved to {updated_hdf5_path}")
+
+
     return df_merged_with_dF_F
