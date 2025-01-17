@@ -120,4 +120,36 @@ def overlay_roi_edges(data, max_proj, manual_selection):
     plt.axis('off')
     plt.show()
 
+def overlay_all_roi_edges(data, max_proj):
+    """Overlay edges of all ROIs on the max projection image."""
+    # Extract the dense array for ROIs
+    A_dense = data['A'].values if hasattr(data['A'], 'values') else csc_matrix(
+        (data['A'].data, data['A'].indices, data['A'].indptr), shape=data['A'].shape).toarray()
+    
+    overlay_edges = np.zeros_like(max_proj)
+    
+    # Iterate through all ROIs
+    for roi in range(A_dense.shape[0]):  # Assuming each row in A_dense corresponds to a neuron
+        roi_mask = A_dense[roi].reshape(max_proj.shape) > 0
+        roi_edge = roi_mask ^ binary_erosion(roi_mask)
+        overlay_edges += roi_edge
+    
+    overlay_edges = np.clip(overlay_edges, 0, 1)
+    
+    # Plot the results
+    plt.figure(figsize=(10, 10))
+    plt.imshow(max_proj, interpolation='nearest')
+    plt.imshow(overlay_edges, cmap='Reds', alpha=0.3, interpolation='nearest')
+    
+    # Optionally label centroids
+    for roi in range(A_dense.shape[0]):
+        roi_mask = A_dense[roi].reshape(max_proj.shape) > 0
+        coords = np.argwhere(roi_mask)
+        if coords.size > 0:
+            centroid = coords.mean(axis=0)
+            plt.text(centroid[1], centroid[0] + 20, str(roi), color='blue', fontsize=12, ha='center', va='center')
+    
+    plt.title('Max Projection with All ROI Edges Overlay')
+    plt.axis('off')
+    plt.show()
 

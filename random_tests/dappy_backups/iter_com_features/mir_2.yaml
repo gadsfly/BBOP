@@ -1,0 +1,16 @@
+data_path: /home/lq53/mir_repos/dappy_24_nov/byws_version/data
+downsample: 10
+label: fitsne
+meta_path: /home/lq53/mir_repos/dappy_24_nov/byws_version/meta_datas/sum2folder_condi_sep_manual_241124_final.csv
+out_path: /home/lq53/mir_repos/dappy_24_nov/byws_version/250116_wav_ffix_ang_pos_vel/50_p/
+single_embed:
+  lr: auto
+  method: fitsne
+  perplexity: 50
+  sigma: 15
+skeleton_name: mouse22_notail
+skeleton_path: /home/lq53/mir_repos/dappy_24_nov/byws_version/skeletons.py
+transform_embed:
+  k: 5
+  method: knn
+  sigma: 15
