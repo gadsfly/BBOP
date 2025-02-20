@@ -150,3 +150,170 @@ def log_folder_to_parquet_sep(base_folder, failed_paths_file, config, force_resc
 
     # Save the updated scan log
     save_scan_log(scan_log_df, scan_log_path)
+
+
+#######################################################################################33
+#below are for miniscope data!
+
+def remove_all_parquet_files(root_path):
+    """
+    Recursively remove all .parquet files under the specified root path.
+    for miniscope folders use only.
+    """
+    for dirpath, dirnames, filenames in os.walk(root_path):
+        for fname in filenames:
+            if fname.endswith(".parquet"):
+                full_path = os.path.join(dirpath, fname)
+                os.remove(full_path)
+                print(f"Deleted: {full_path}")
+
+def process_experiment_dir(animal_id, custom_label, date_str, time_str, root_dir, failed_entries, config):
+    """
+    Process a single experiment directory following:
+    root_dir / animal_id / custom_label / date_str / time_str
+
+    Only logs data for subfolders named 'My_V4_Miniscope'.
+    """
+    exp_path = os.path.join(root_dir, animal_id, custom_label, date_str, time_str)
+    rec_entries = []
+    calib_files = []
+
+    # Identify calibration files within the experiment folder
+    for file_name in os.listdir(exp_path):
+        if file_name.startswith("calib"):
+            calib_files.append(file_name)
+
+    # Scan only for the rec folder named 'My_V4_Miniscope'
+    for rec_folder in os.listdir(exp_path):
+        if rec_folder == "My_V4_Miniscope":  # <-- Only process this folder
+            rec_path = os.path.join(exp_path, rec_folder)
+            if os.path.isdir(rec_path):
+                # Detect associated calibration file (if any)
+                calib_file = find_calib_file(rec_path)
+                rec_entry = assign_status_codes(
+                    animal_id, rec_path, calib_file, failed_entries, config
+                )
+                rec_entry["rec_name"] = rec_folder
+                rec_entry["timestamp"] = datetime.datetime.now().isoformat()
+                rec_entry["animal_id"] = animal_id
+                rec_entry["custom_label"] = custom_label
+                rec_entry["date"] = date_str
+                rec_entry["time"] = time_str
+                rec_entries.append(rec_entry)
+
+    return {
+        'animal_id': animal_id,
+        'custom_label': custom_label,
+        'date': date_str,
+        'time': time_str,
+        'calib_files': calib_files,
+        'rec_entries': rec_entries
+    }
+
+
+def log_experiment_data(root_dir, failed_paths_file, config, force_reprocess=None, rescan_days=7):
+    """
+    Scan experiments and log data, saving Parquet files **only** for folders named 'My_V4_Miniscope'.
+
+    Assumes folder structure:
+      root_dir/
+          animal_id (e.g., "20240910-V1-R")/
+              custom_label (e.g., "customEntValHere")/
+                  date (e.g., "2024_11_13")/
+                      time (e.g., "16_18_24")/
+                          My_V4_Miniscope  <-- only these are logged
+
+    Generates a `folder_log.parquet` inside each rec folder that matches.
+    The scan log is updated using "animal_id/custom_label/date/time".
+    """
+    scan_log_path = os.path.join(root_dir, '#paret', 'scan_log.csv')
+    scan_log_df = load_scan_log(scan_log_path)
+
+    # Read manually recorded failed paths
+    failed_entries = read_failed_paths(failed_paths_file) if failed_paths_file else set()
+
+    if force_reprocess is None:
+        force_reprocess = []
+    force_reprocess_set = set(force_reprocess)
+
+    # Identify experiments needing a scan
+    experiments_to_process = []
+    for animal_id in os.listdir(root_dir):
+        animal_path = os.path.join(root_dir, animal_id)
+        if not os.path.isdir(animal_path):
+            continue
+        for custom_label in os.listdir(animal_path):
+            custom_path = os.path.join(animal_path, custom_label)
+            if not os.path.isdir(custom_path):
+                continue
+            for date_str in os.listdir(custom_path):
+                date_path = os.path.join(custom_path, date_str)
+                if not os.path.isdir(date_path) or not match_date_pattern(date_str):
+                    continue
+                for time_str in os.listdir(date_path):
+                    time_path = os.path.join(date_path, time_str)
+                    if not os.path.isdir(time_path):
+                        continue
+                    exp_key = (animal_id, custom_label, date_str, time_str)
+                    experiments_to_process.append(exp_key)
+
+    if not experiments_to_process:
+        print("No new or modified experiments to process.")
+        return
+
+    # Parallel processing of experiment directories
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = []
+        for animal_id, custom_label, date_str, time_str in experiments_to_process:
+            futures.append(
+                executor.submit(
+                    process_experiment_dir,
+                    animal_id, custom_label, date_str, time_str,
+                    root_dir, failed_entries, config
+                )
+            )
+
+        for future in concurrent.futures.as_completed(futures):
+            exp_data = future.result()
+            animal_id = exp_data['animal_id']
+            custom_label = exp_data['custom_label']
+            date_str = exp_data['date']
+            time_str = exp_data['time']
+            calib_files = exp_data.get('calib_files', [])
+            calib_files = [str(f) for f in calib_files] if calib_files else []
+
+            # Process and save logs **only** for the matching rec entries
+            for rec_entry in exp_data['rec_entries']:
+                rec_name = rec_entry['rec_name']
+                save_path = os.path.join(
+                    root_dir,
+                    animal_id,
+                    custom_label,
+                    date_str,
+                    time_str,
+                    rec_name,
+                    "folder_log.parquet"
+                )
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+                # Attach calibration info
+                rec_entry['calib_files'] = calib_files
+
+                # Convert status fields to string based on config
+                status_columns = list(config.keys())
+                df = pd.DataFrame([rec_entry])
+                df[status_columns] = df[status_columns].astype(str)
+
+                table = pa.Table.from_pandas(df)
+                pq.write_table(table, save_path)
+                print(f"Log for {rec_name} saved at {save_path}")
+
+                # Update scan log with a key like "animal_id/custom_label/date/time"
+                scan_key = f"{animal_id}/{custom_label}/{date_str}/{time_str}"
+                scan_log_df = update_scan_log(scan_log_df, scan_key, rec_name)
+
+    # Finalize scan log
+    scan_log_df = clean_scan_log(scan_log_df, root_dir)
+    save_scan_log(scan_log_df, scan_log_path)
+
+
