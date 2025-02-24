@@ -97,6 +97,64 @@ def plot_dff(dF_F, ts, selected_neurons, title="ΔF/F for Selected Neurons"):
 #     plt.legend()
 #     plt.show()
 
+def overlay_roi_edges_exclude(data, max_proj, exclude_neurons=None):
+    """
+    Overlay ROI edges on the max projection image, excluding specified neurons.
+
+    Parameters:
+        data : dict
+            Dictionary containing the ROI masks under key 'A'. The ROI masks can be in
+            either a dense (NumPy array) or sparse (e.g., csc_matrix) format.
+        max_proj : 2D array
+            The max projection image.
+        exclude_neurons : list, optional
+            List of ROI indices to exclude from overlaying and labeling.
+            If None, all neurons will be included.
+    """
+    if exclude_neurons is None:
+        exclude_neurons = []
+        
+    # Convert data['A'] to a dense array if needed
+    if hasattr(data['A'], 'values'):
+        A_dense = data['A'].values
+    else:
+        A_dense = csc_matrix((data['A'].data, data['A'].indices, data['A'].indptr),
+                             shape=data['A'].shape).toarray()
+    
+    overlay_edges = np.zeros_like(max_proj)
+    n_rois = A_dense.shape[0]
+    
+    # Process each ROI from all neurons except those to be excluded
+    for roi in range(n_rois):
+        if roi in exclude_neurons:
+            continue
+        roi_mask = A_dense[roi].reshape(max_proj.shape) > 0
+        roi_edge = roi_mask ^ binary_erosion(roi_mask)
+        overlay_edges += roi_edge
+        
+    overlay_edges = np.clip(overlay_edges, 0, 1)
+    
+    # Plot the max projection and overlay the ROI edges
+    plt.figure(figsize=(10, 10))
+    plt.imshow(max_proj, interpolation='nearest')
+    plt.imshow(overlay_edges, cmap='Reds', alpha=0.3, interpolation='nearest')
+    
+    # Add ROI labels for all neurons (except those excluded)
+    for roi in range(n_rois):
+        if roi in exclude_neurons:
+            continue
+        roi_mask = A_dense[roi].reshape(max_proj.shape) > 0
+        coords = np.argwhere(roi_mask)
+        if coords.size > 0:
+            centroid = coords.mean(axis=0)
+            plt.text(centroid[1], centroid[0] + 20, str(roi), color='blue', fontsize=12,
+                     ha='center', va='center')
+                     
+    plt.title('Max Projection with ROI Edges Overlay (Excluding Specified Neurons)')
+    plt.axis('off')
+    plt.show()
+
+
 def overlay_roi_edges(data, max_proj, manual_selection):
     """Overlay ROI edges on the max projection image."""
     A_dense = data['A'].values if hasattr(data['A'], 'values') else csc_matrix(
