@@ -60,6 +60,19 @@ STATUS_FIELDS_CONFIG = {
         ]
     },
 
+
+    'com_vis': {
+        'default': 0,  # Default NO
+        'conditions': [
+            {
+                'condition': lambda **kwargs: os.path.exists(os.path.join(kwargs['subfolder_path'], 'COM/predict00/vis')) and
+                                               any(f.endswith('.jpg')
+                                                   for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'COM/predict00/vis'))),
+                'value': 1  # YES
+            }
+        ]
+    },
+
     'social': {
         'default': 0,
         'conditions': [
@@ -132,6 +145,20 @@ STATUS_FIELDS_CONFIG = {
             {
                 'condition': lambda **kwargs: os.path.exists(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00')) and
                                             any(f == 'save_data_AVG.mat' for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00'))),
+                'value': 1  # YES
+            }
+        ]
+    },
+
+
+    
+    'dannce_vis': {
+        'default': 0,  # Default NO
+        'conditions': [
+            {
+                'condition': lambda **kwargs: os.path.exists(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00/vis')) and
+                                               any(f.endswith('.jpg')
+                                                   for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00/vis'))),
                 'value': 1  # YES
             }
         ]
