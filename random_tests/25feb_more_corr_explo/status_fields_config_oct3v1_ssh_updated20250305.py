@@ -88,7 +88,11 @@ STATUS_FIELDS_CONFIG = {
             {
                 'condition': lambda **kwargs: '2mice' in kwargs['subfolder_path'].lower(),
                 'value': 1  # Set to 1 if "social" is in the path
-            }      
+            },
+            {
+                'condition': lambda **kwargs: '2male' in kwargs['subfolder_path'].lower(),
+                'value': 1  # Set to 1 if "social" is in the path
+            }          
                   
         ]
     },
