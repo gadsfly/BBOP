@@ -114,6 +114,7 @@ def overlay_roi_edges_exclude(data, max_proj, exclude_neurons=None):
     if exclude_neurons is None:
         exclude_neurons = []
         
+        
     # Convert data['A'] to a dense array if needed
     if hasattr(data['A'], 'values'):
         A_dense = data['A'].values
