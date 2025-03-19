@@ -29,6 +29,18 @@ STATUS_FIELDS_CONFIG = {
         ]
         },
 
+'minian_selected': {
+    'default': 0,
+    'conditions': [
+        {
+            'condition': lambda **kwargs: sum(
+                fname.endswith('.nc') for fname in os.listdir(kwargs['subfolder_path'])
+            ) == 1,
+            'value': 1  # Mark 1 if only one .nc file is found
+        }
+    ]
+},
+
     'valid_rec': {
         # If we want “0” for missing 4.avi and “1” if found:
         'default': 0,  
