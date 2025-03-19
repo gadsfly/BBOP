@@ -11,7 +11,7 @@ def main(session_dir, animal):
     animal:      an identifier for the subject/animal
     """
     # === Parameter Grid Setup ===
-    wnd_size_vals    = [700, 1000, 1500]
+    wnd_size_vals    = [1500] #700, 
     stp_size_vals    = [700]  # Only one value
     diff_thres_vals  = [3.5, 4.0, 5.0]
     pnr_thresh_vals  = [1.1, "auto"]
