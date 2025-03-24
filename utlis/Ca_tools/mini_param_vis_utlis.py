@@ -62,7 +62,8 @@ def vis_param_opti(session_dir):
         
         # Update the title with an ID derived from the filename.
         combination_id = os.path.basename(nc_file).replace("minian_dataset_", "").replace(".nc", "")
-        title = "_".join(session_dir.split("/")[-5:-2])
+        # title = "_".join(session_dir.split("/")[-5:-2])
+        title = "_".join([session_dir.split("/")[-5], session_dir.split("/")[-3], session_dir.split("/")[-2]])
         ax.set_title(title + combination_id) #"Overlay ROI Edges: "
         
         if display_only:
