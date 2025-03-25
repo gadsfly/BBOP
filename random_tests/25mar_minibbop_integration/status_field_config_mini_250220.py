@@ -52,25 +52,25 @@ STATUS_FIELDS_CONFIG = {
                 'value': 1
             }
         ]},
-        
-        'mapped': {
-    'default': 0,
-    'conditions': [
-        {
-            'condition': lambda **kwargs: kwargs.get('experiment_path') in kwargs.get('manual_log', {}),
-            'value': 1  # Mark as mapped if the experiment path is found in the CSV
-        }
-    ]
-},
-'quality': {
-    'default': 'unknown',
-    'conditions': [
-        {
-            'condition': lambda **kwargs: kwargs.get('experiment_path') in kwargs.get('manual_log', {}),
-            'value': lambda **kwargs: kwargs.get('manual_log')[kwargs.get('experiment_path')]
-        }
-    ]
-},
+    #below are failed tries.    
+#         'mapped': {
+#     'default': 0,
+#     'conditions': [
+#         {
+#             'condition': lambda **kwargs: kwargs.get('experiment_path') in kwargs.get('manual_log', {}),
+#             'value': 1  # Mark as mapped if the experiment path is found in the CSV
+#         }
+#     ]
+# },
+# 'quality': {
+#     'default': 'unknown',
+#     'conditions': [
+#         {
+#             'condition': lambda **kwargs: kwargs.get('experiment_path') in kwargs.get('manual_log', {}),
+#             'value': lambda **kwargs: kwargs.get('manual_log')[kwargs.get('experiment_path')]
+#         }
+#     ]
+# },
 
 
 }
