@@ -316,7 +316,120 @@ def process_experiment_dir(animal_id, custom_label, date_str, time_str, root_dir
 #     scan_log_df = clean_scan_log(scan_log_df, root_dir)
 #     save_scan_log(scan_log_df, scan_log_path)
 
+# def load_manual_log(csv_path):
+#     import csv
+#     manual_log = {}
+#     with open(csv_path, newline='') as csvfile:
+#         reader = csv.DictReader(csvfile)
+#         for row in reader:
+#             rec_path = row['rec_path']
+#             condition = row['condition']
+#             manual_log[rec_path] = condition
+#     return manual_log
 
+
+
+# def process_experiment_dir_with_manual(animal_id, custom_label, date_str, time_str,
+#                                          root_dir, failed_entries, config, manual_log):
+#     # Call your existing function
+#     exp_data = process_experiment_dir(animal_id, custom_label, date_str, time_str,
+#                                       root_dir, failed_entries, config)
+    
+#     # Compute the full experiment path (adjust the folder name if necessary)
+#     experiment_path = os.path.join(root_dir, animal_id, custom_label, date_str, time_str, "My_V4_Miniscope")
+    
+#     # Check if the experiment path exists in the manual log
+#     if experiment_path in manual_log:
+#         exp_data['mapped'] = 1
+#         exp_data['quality'] = manual_log[experiment_path]
+#     else:
+#         exp_data['mapped'] = 0
+#         exp_data['quality'] = 'unknown'
+    
+#     return exp_data
+
+
+# def log_experiment_data(root_dir, manual_log_path, failed_paths_file, config, force_reprocess=None, rescan_days=7):
+#     # Load the manual CSV log once
+#     manual_log = load_manual_log(manual_log_path)
+    
+#     scan_log_path = os.path.join(root_dir, '#paret', 'scan_log.csv')
+#     scan_log_df = load_scan_log(scan_log_path)
+    
+#     failed_entries = read_failed_paths(failed_paths_file) if failed_paths_file else set()
+    
+#     if force_reprocess is None:
+#         force_reprocess = []
+#     force_reprocess_set = set(force_reprocess)
+    
+#     experiments_to_process = []
+#     for animal_id in os.listdir(root_dir):
+#         animal_path = os.path.join(root_dir, animal_id)
+#         if not os.path.isdir(animal_path):
+#             continue
+#         for custom_label in os.listdir(animal_path):
+#             custom_path = os.path.join(animal_path, custom_label)
+#             if not os.path.isdir(custom_path):
+#                 continue
+#             for date_str in os.listdir(custom_path):
+#                 date_path = os.path.join(custom_path, date_str)
+#                 if not os.path.isdir(date_path) or not match_date_pattern(date_str):
+#                     continue
+#                 for time_str in os.listdir(date_path):
+#                     time_path = os.path.join(date_path, time_str)
+#                     if not os.path.isdir(time_path):
+#                         continue
+#                     exp_key = (animal_id, custom_label, date_str, time_str)
+#                     experiments_to_process.append(exp_key)
+    
+#     if not experiments_to_process:
+#         print("No new or modified experiments to process.")
+#         return
+    
+#     # Parallel processing using the wrapper that passes down the manual log
+#     with concurrent.futures.ThreadPoolExecutor() as executor:
+#         futures = []
+#         for animal_id, custom_label, date_str, time_str in experiments_to_process:
+#             futures.append(
+#                 executor.submit(
+#                     process_experiment_dir_with_manual,
+#                     animal_id, custom_label, date_str, time_str,
+#                     root_dir, failed_entries, config, manual_log
+#                 )
+#             )
+    
+#         for future in concurrent.futures.as_completed(futures):
+#             exp_data = future.result()
+#             animal_id = exp_data['animal_id']
+#             custom_label = exp_data['custom_label']
+#             date_str = exp_data['date']
+#             time_str = exp_data['time']
+    
+#             for rec_entry in exp_data['rec_entries']:
+#                 save_path = os.path.join(
+#                     root_dir,
+#                     animal_id,
+#                     custom_label,
+#                     date_str,
+#                     time_str,
+#                     "folder_log.parquet"
+#                 )
+#                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
+#                 status_columns = list(config.keys())
+#                 df = pd.DataFrame([rec_entry])
+#                 df = df.drop(columns=['rec_name', 'calib_files'], errors='ignore')
+#                 df[status_columns] = df[status_columns].astype(str)
+#                 table = pa.Table.from_pandas(df)
+#                 pq.write_table(table, save_path)
+#                 scan_key = f"{animal_id}/{custom_label}/{date_str}/{time_str}"
+#                 print(f"Log for {scan_key} saved at {save_path}")
+#                 scan_log_df = update_scan_log(scan_log_df, date_str, scan_key)
+    
+#     scan_log_df = clean_scan_log(scan_log_df, root_dir)
+#     save_scan_log(scan_log_df, scan_log_path)
+
+
+#below function is without manual red flags.
 def log_experiment_data(root_dir, failed_paths_file, config, force_reprocess=None, rescan_days=7):
     """
     Scan experiments and log data, saving Parquet files **only** for folders named 'My_V4_Miniscope'.
@@ -332,6 +445,7 @@ def log_experiment_data(root_dir, failed_paths_file, config, force_reprocess=Non
     Generates a `folder_log.parquet` inside each rec folder that matches.
     The scan log is updated using "animal_id/custom_label/date/time".
     """
+    # manual_log = load_manual_log(manual_log_path)
     scan_log_path = os.path.join(root_dir, '#paret', 'scan_log.csv')
     scan_log_df = load_scan_log(scan_log_path)
 
@@ -370,6 +484,7 @@ def log_experiment_data(root_dir, failed_paths_file, config, force_reprocess=Non
     # Parallel processing of experiment directories
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = []
+        # the commented part is without the red flag version.
         for animal_id, custom_label, date_str, time_str in experiments_to_process:
             futures.append(
                 executor.submit(
@@ -378,6 +493,20 @@ def log_experiment_data(root_dir, failed_paths_file, config, force_reprocess=Non
                     root_dir, failed_entries, config
                 )
             )
+
+
+        # #trying the red flag thing
+        # for animal_id, custom_label, date_str, time_str in experiments_to_process:
+        #     experiment_path = os.path.join(root_dir, animal_id, custom_label, date_str, time_str, "My_V4_Miniscope")
+        #     futures.append(
+        #         executor.submit(
+        #             process_experiment_dir,
+        #             animal_id, custom_label, date_str, time_str,
+        #             root_dir, failed_entries, config,
+        #             experiment_path=experiment_path,
+        #             manual_log=manual_log
+        #         )
+        #     )
 
         for future in concurrent.futures.as_completed(futures):
             exp_data = future.result()
