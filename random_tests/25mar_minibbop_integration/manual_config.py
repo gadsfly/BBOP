@@ -1,6 +1,75 @@
-
 sessions = [
     {
+        "session_dir": "",
+        "max_wnd": 15,
+        "diff_thres": 3.0,
+    },
+
+    # {
+    #     "session_dir": "",
+    #     "max_wnd": 15,
+    #     "diff_thres": 3.0,
+    # },
+    #     {
+    #     "session_dir": "",
+    #     "script": "param_search_driver_simple.py"
+    # },
+  
+]
+
+
+
+future_sessions = [
+
+    {
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241224PMCLE1/customEntValHere/2025_02_13/11_07_37/My_V4_Miniscope",
+        "max_wnd": 15,
+        "diff_thres": 3.0,
+    },
+
+    {
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/202401015-PMC-r2/customEntValHere/2024_11_07/13_04_45/My_V4_Miniscope",
+        "script": "param_search_driver_simple.py"
+    },
+
+            {
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/202401015-PMC-r2/customEntValHere/2024_11_07/13_25_34/My_V4_Miniscope",
+        "script": "param_search_driver_simple.py"
+    },
+    #we don't need clean up unless they need to be optimized becuase there is corrsponding recordings i guess. stupid.
+    # {
+    #    "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20240819-V1-r1/customEntValHere/2024_10_08/19_44_49/My_V4_Miniscope",
+    #     "script": "cleanup_session.py",
+    #    "keep_combination": "wnd7000_stp700_max25_diff3.5_pnrauto" #"wnd1500_stp700_max15_diff3.5_pnrauto"
+ 
+    # },
+    # {
+    #     "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20240819-V1-r1/customEntValHere/2024_10_08/20_00_58/My_V4_Miniscope",
+    #     "script": "cleanup_session.py",
+    #    "keep_combination": "wnd7000_stp700_max25_diff3.5_pnr1.1" #"wnd1500_stp700_max15_diff3.5_pnrauto"
+
+
+    # },
+    #     {
+    #     "session_dir": "rsync_dcc_sum/Oct3V1mini_sorted/20240819-V1-r1/customEntValHere/2024_10_08/20_32_38/My_V4_Miniscope",
+    #     "script": "cleanup_session.py",
+    #    "keep_combination": "" #"wnd1500_stp700_max15_diff3.5_pnrauto"
+    #     },
+    # {
+    #     "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20240819-V1-r1/customEntValHere/2024_10_17/14_25_32/My_V4_Miniscope",
+    #     "script": "cleanup_session.py",
+    #     "keep_combination": "" 
+    # },
+    {
+        
+    },
+    # {
+    #     "session_dir": "",
+    #     "script": "cleanup_session.py",
+    #    "keep_combination": "" #"wnd1500_stp700_max15_diff3.5_pnrauto"
+    #     },
+
+      {
         "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241224PMCLE1/customEntValHere/2025_02_13/11_07_37/My_V4_Miniscope",
         "max_wnd": 15,
         "diff_thres": 3.0,
@@ -86,41 +155,4 @@ sessions = [
         "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241002-pmc-r2/customEntValHere/2024_10_25/17_09_14/My_V4_Miniscope",
         "script": "param_search_driver.py"
     }
-]
-
-
-
-future_sessions = [
-    #we don't need clean up unless they need to be optimized becuase there is corrsponding recordings i guess. stupid.
-    # {
-    #    "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20240819-V1-r1/customEntValHere/2024_10_08/19_44_49/My_V4_Miniscope",
-    #     "script": "cleanup_session.py",
-    #    "keep_combination": "wnd7000_stp700_max25_diff3.5_pnrauto" #"wnd1500_stp700_max15_diff3.5_pnrauto"
- 
-    # },
-    # {
-    #     "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20240819-V1-r1/customEntValHere/2024_10_08/20_00_58/My_V4_Miniscope",
-    #     "script": "cleanup_session.py",
-    #    "keep_combination": "wnd7000_stp700_max25_diff3.5_pnr1.1" #"wnd1500_stp700_max15_diff3.5_pnrauto"
-
-
-    # },
-    #     {
-    #     "session_dir": "rsync_dcc_sum/Oct3V1mini_sorted/20240819-V1-r1/customEntValHere/2024_10_08/20_32_38/My_V4_Miniscope",
-    #     "script": "cleanup_session.py",
-    #    "keep_combination": "" #"wnd1500_stp700_max15_diff3.5_pnrauto"
-    #     },
-    # {
-    #     "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20240819-V1-r1/customEntValHere/2024_10_17/14_25_32/My_V4_Miniscope",
-    #     "script": "cleanup_session.py",
-    #     "keep_combination": "" 
-    # },
-    {
-        
-    },
-    # {
-    #     "session_dir": "",
-    #     "script": "cleanup_session.py",
-    #    "keep_combination": "" #"wnd1500_stp700_max15_diff3.5_pnrauto"
-    #     },
 ]
