@@ -233,3 +233,62 @@ def run_vis_param_opti_from_table(mini_param_for_vis):
         except Exception as e:
             print(f"Error processing session {session_dir}: {e}")
 
+
+
+
+
+def run_miniscope_handler_from_table(mini_param_for_vis, handler_func=None):
+    """
+    Iterate through each row in `mini_param_for_vis` (a PyArrow Table),
+    construct the session_dir from relevant columns, and then call the provided
+    handler function for that session. This serves as a common handler for
+    miniscope data processing.
+    
+    Parameters:
+    -----------
+    mini_param_for_vis : PyArrow Table
+        Table containing session parameters, e.g. animal_id, custom_label, date, time.
+    handler_func : callable, optional
+        A function that takes the session directory as its argument.
+        If not provided, the default function `vis_param_opti` is used.
+    """
+    # Use default handler if none provided
+    if handler_func is None:
+        handler_func = vis_param_opti
+
+    # Convert table to a list of dictionaries, each representing one row.
+    rows = mini_param_for_vis.to_pylist()
+
+    for row in rows:
+        # Extract required columns (adjust keys as needed)
+        animal_id    = row["animal_id"]     # e.g. "20241015PMCBE1"
+        custom_label = row["custom_label"]  # e.g. "customEntValHere"
+        date_str     = row["date"]          # e.g. "2025_03_11"
+        time_str     = row["time"]          # e.g. "14_22_12"
+
+        # Construct the session directory path
+        session_dir = os.path.join(
+            "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted",
+            animal_id,
+            custom_label,
+            date_str,
+            time_str,
+            "My_V4_Miniscope"
+        )
+
+        # Check if the session directory exists; warn if it does not.
+        if not os.path.exists(session_dir):
+            print(f"Warning: session_dir not found: {session_dir}")
+            # Optionally create the directory:
+            # os.makedirs(session_dir, exist_ok=True)
+
+        print(f"\n=== Running handler for session ===")
+        print(f"Animal:       {animal_id}")
+        print(f"Session dir:  {session_dir}")
+
+        try:
+            # Call the provided handler function with the session directory.
+            handler_func(session_dir)
+        except Exception as e:
+            print(f"Error processing session {session_dir}: {e}")
+
