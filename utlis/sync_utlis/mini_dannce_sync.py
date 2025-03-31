@@ -143,6 +143,8 @@ def sync_videos(
     """
     # Define paths
     mini_cam_path = os.path.join(mini_path, 'My_First_WebCam')
+    if not os.path.exists(mini_cam_path):
+        mini_cam_path = os.path.join(mini_path, 'My_WebCam')
     mini_cam_vid = os.path.join(mini_cam_path, '0.avi')
 
     miniscope_path = os.path.join(mini_path, 'My_V4_Miniscope')
@@ -228,6 +230,8 @@ def align_miniscope_to_sixcam(resultsss, mini_path, rec_path):
     
     # Miniscope webcam timestamps
     mini_cam_path = os.path.join(mini_path, 'My_First_WebCam')
+    if not os.path.exists(mini_cam_path):
+        mini_cam_path = os.path.join(mini_path, 'My_WebCam')
     mini_cam_timestamps_p = os.path.join(mini_cam_path, 'timeStamps.csv')
     mini_cam_vid = os.path.join(mini_cam_path, '0.avi')
     
