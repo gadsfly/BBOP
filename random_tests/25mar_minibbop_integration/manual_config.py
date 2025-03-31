@@ -52,10 +52,75 @@ sessions1 = [
         },
 
               {
-        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/202409-V1-r1/customEntValHere/2024_11_01/14_57_45/My_V4_Miniscope",
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20240910-V1-R/customEntValHere/2024_11_01/13_09_59/My_V4_Miniscope",
+        "script": "cleanup_session.py", 
+       "keep_combination": "wnd1500_stp700_max25_diff3.5_pnr1.1"
+        },
+
+                      {
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20240919-V1-R1/customEntValHere/2024_12_18/11_22_07/My_V4_Miniscope",
+        "script": "cleanup_session.py", 
+       "keep_combination": "wnd700_stp700_max25_diff5.0_pnrauto"
+        },
+
+                      {
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20240919-V1-R2/customEntValHere/2024_12_31/13_55_41/My_V4_Miniscope",
         "script": "cleanup_session.py", 
        "keep_combination": "wnd1500_stp700_max25_diff5.0_pnrauto"
         },
+
+                      {
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241001-PMC-r2/customEntValHere/2024_10_24/16_20_26/My_V4_Miniscope",
+        "script": "cleanup_session.py", 
+       "keep_combination": "wnd1500_stp700_max15_diff3.5_pnrauto"
+        },
+
+                      {
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241001PMCRE2/customEntValHere/2025_02_12/13_45_01/My_V4_Miniscope",
+        "script": "cleanup_session.py", 
+       "keep_combination": "wnd1500_stp700_max15_diff5.0_pnr1.1"
+        },
+
+                               {
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241001PMCRE2/customEntValHere/2025_02_12/14_01_13/My_V4_Miniscope",
+        "script": "cleanup_session.py", 
+       "keep_combination": "wnd1500_stp700_max15_diff4.0_pnr1.1"
+        },
+
+
+                               {
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241001PMCRE2/customEntValHere/2025_02_12/15_36_16/My_V4_Miniscope",
+        "script": "cleanup_session.py", 
+       "keep_combination": "wnd1500_stp700_max15_diff4.0_pnr1.1"
+        },
+
+
+        {"session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241002-pmc-r2/customEntValHere/2024_10_25/16_27_28/My_V4_Miniscope",
+        "script": "cleanup_session.py", 
+       "keep_combination": "wnd1500_stp700_max15_diff3.5_pnr1.1"
+        },
+                               {
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241015PMCBE1/customEntValHere/2025_02_27/12_25_53/My_V4_Miniscope",
+        "script": "cleanup_session.py", 
+       "keep_combination": "wnd700_stp700_max15_diff3.5_pnr1.1"
+        },
+                               {
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241212v1|1r1/customEntValHere/2024_12_31/11_31_05/My_V4_Miniscope",
+        "script": "cleanup_session.py", 
+       "keep_combination": "wnd1500_stp700_max25_diff3.5_pnr1.1"
+        },
+                                       {
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241212v1|1r2/customEntValHere/2024_12_31/12_07_27/My_V4_Miniscope",
+        "script": "cleanup_session.py", 
+       "keep_combination": "wnd1500_stp700_max25_diff3.5_pnrauto"
+        },
+
+                                               {#too little but whatever for now
+        "session_dir": "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241224PMCLE1/customEntValHere/2025_02_13/11_07_37/My_V4_Miniscope",
+        "script": "cleanup_session.py", 
+       "keep_combination": "wnd1500_stp700_max15_diff3.5_pnrauto"
+        },
+
 
 
     # {
