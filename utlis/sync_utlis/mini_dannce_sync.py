@@ -307,17 +307,17 @@ def align_miniscope_to_sixcam(resultsss, mini_path, rec_path):
     print(f"Aligned data saved to {hdf5_output_path}")
     
 
-    # # ----------------------------
-    # # We'll store both in a JSON file for simplicity.
-    # map_data = {
-    #     "time_offset": float(time_offset),  # ensure it's JSON-serializable
-    #     "mapped_sixcam_frame_indices": mapped_sixcam_frame_indices.tolist()
-    # }
-    # json_mapping_file = os.path.join(save_path, "frame_mapping.json")
-    # with open(json_mapping_file, "w") as f:
-    #     json.dump(map_data, f, indent=2)
-    # print(f"Frame mapping data saved to {json_mapping_file}")
-    # # ----------------------------
+    # ----------------------------
+    # We'll store both in a JSON file for simplicity.
+    map_data = {
+        "time_offset": float(time_offset),  # ensure it's JSON-serializable
+        "mapped_sixcam_frame_indices": mapped_sixcam_frame_indices.tolist()
+    }
+    json_mapping_file = os.path.join(save_path, "frame_mapping.json")
+    with open(json_mapping_file, "w") as f:
+        json.dump(map_data, f, indent=2)
+    print(f"Frame mapping data saved to {json_mapping_file}")
+    # ----------------------------
 
     # Print shapes
     print("aligned_pred_3d_flat.shape:", aligned_pred_3d_flat.shape)
@@ -412,3 +412,227 @@ def load_aligneddannce_and_process_ca_data(rec_path, mini_path):
 
 
     return df_merged_with_dF_F
+
+
+def load_aligneddannce_and_process_ca_data_custom(rec_path, mini_path, nc_file=None):
+    """
+    Process calcium imaging data, interpolate to match miniscope timestamps, calculate ΔF/F, 
+    and save the merged data into an HDF5 file.
+    
+    Parameters:
+        rec_path (str): Path to the recording folder containing aligned_predictions.h5.
+        mini_path (str): Path to the miniscope data folder containing timeStamps.csv and .nc file.
+        nc_file (str, optional): If provided, it can be either the full path to the .nc file or 
+                                 a key (e.g., 'wnd1500_stp700_max15_diff3.5_pnrauto') that is used 
+                                 to build the file name (as "minian_dataset_<key>.nc").
+    """
+
+    # Load miniscope data
+    hdf5_input_path = os.path.join(rec_path, 'MIR_Aligned', 'aligned_predictions.h5')
+    df = pd.read_hdf(hdf5_input_path, key='df')
+    mini_cam_timestamps = df.index.values
+    print("Data loaded successfully!")
+    
+    # Define paths for miniscope data
+    miniscope_path = os.path.join(mini_path, 'My_V4_Miniscope')
+    miniscope_timestamps_path = os.path.join(miniscope_path, 'timeStamps.csv')
+    
+    # Determine which .nc file to use:
+    if nc_file is not None:
+        # If the provided string is an existing file, use it as-is.
+        if os.path.exists(nc_file):
+            ca_file_path = nc_file
+        else:
+            # Otherwise, assume it's a key and build the filename accordingly.
+            ca_file_path = os.path.join(miniscope_path, f"minian_dataset_{nc_file}.nc")
+            if not os.path.exists(ca_file_path):
+                raise FileNotFoundError(f"No .nc file found using the key '{nc_file}' at {ca_file_path}.")
+    else:
+        nc_files = glob.glob(os.path.join(miniscope_path, '*.nc'))
+        if not nc_files:
+            raise FileNotFoundError("No .nc files found in the specified miniscope path.")
+        ca_file_path = nc_files[0]
+    
+    # Load calcium data
+    data = xr.open_dataset(ca_file_path)
+    
+    # Load timestamps for the miniscope data
+    timestamps = pd.read_csv(miniscope_timestamps_path)
+    ts = timestamps['Time Stamp (ms)'].values  # shape (num_ca_frames,)
+    
+    C = data['C'].values  # Calcium signals
+    num_neuron, num_frame = C.shape
+    print("Calcium data shape:", C.shape)
+    print("Timestamps shape:", ts.shape)
+    
+    # Interpolate calcium signals to match miniscope timestamps
+    C_interpolated = []
+    for i_neuron in range(num_neuron):
+        func = interp1d(ts, C[i_neuron, :], kind='linear', bounds_error=False, fill_value='extrapolate')
+        neuron_interp = func(mini_cam_timestamps)
+        C_interpolated.append(neuron_interp)
+    C_interpolated = np.array(C_interpolated)  # shape (num_neuron, N_miniscope_frames)
+    print("Interpolated Ca data shape:", C_interpolated.shape)
+    
+    # Calculate ΔF/F using the interpolated calcium data
+    F0_interpolated = np.percentile(C_interpolated, 20, axis=1, keepdims=True)
+    dF_F_interpolated = (C_interpolated - F0_interpolated) / F0_interpolated
+    print("ΔF/F interpolated shape:", dF_F_interpolated.shape)
+    
+    # Create column names for calcium and ΔF/F data
+    calcium_cols = [f'calcium_roi{i}' for i in range(num_neuron)]
+    dF_F_cols = [f'dF_F_roi{i}' for i in range(num_neuron)]
+    
+    # Transpose arrays to match the DataFrame format (frames x neurons)
+    C_interpolated_transposed = C_interpolated.T
+    dF_F_interpolated_transposed = dF_F_interpolated.T
+    
+    # Create DataFrames for the calcium and ΔF/F signals
+    df_ca = pd.DataFrame(data=C_interpolated_transposed, index=mini_cam_timestamps, columns=calcium_cols)
+    df_dF_F = pd.DataFrame(data=dF_F_interpolated_transposed, index=mini_cam_timestamps, columns=dF_F_cols)
+    
+    df_ca.index.name = 'timestamp_ms'
+    df_dF_F.index.name = 'timestamp_ms'
+    
+    # Merge the new data with the existing DataFrame
+    df_merged = df.join(df_ca, how='inner')
+    df_merged_with_dF_F = df_merged.join(df_dF_F, how='inner')
+    print("DataFrame with Ca and ΔF/F signals merged:")
+    # print(df_merged_with_dF_F.head())
+    
+    # Save the updated DataFrame to a new HDF5 file
+    updated_hdf5_path = os.path.join(rec_path, 'MIR_Aligned', 'aligned_predictions_with_ca_and_dF_F.h5')
+    df_merged_with_dF_F.to_hdf(updated_hdf5_path, key='df', mode='w')
+    print(f"Updated DataFrame with Ca and ΔF/F data saved to {updated_hdf5_path}")
+    
+    return df_merged_with_dF_F
+
+
+def load_aligneddannce_and_process_ca_data_custom_key(rec_path, mini_path, nc_key):
+    """
+    Process calcium imaging data, interpolate to match miniscope timestamps, calculate ΔF/F, 
+    and save the merged data into an HDF5 file. The output HDF5 filenames are customized using
+    the provided output_key.
+    
+    Parameters:
+        rec_path (str): Path to the recording folder containing the aligned predictions.
+        mini_path (str): Path to the miniscope data folder containing timeStamps.csv and .nc file.
+        output_key (str): A key string to customize the output HDF5 file names.
+        nc_file (str, optional): If provided, either the full path to the .nc file or 
+                                 a key used to build the file name (as "minian_dataset_<key>.nc").
+    """
+
+    # Determine input and output HDF5 filenames using the output_key
+    hdf5_input_filename = "aligned_predictions.h5"
+    updated_hdf5_filename = f"aligned_predictions_with_ca_and_dF_F_{nc_key}.h5"
+    
+    hdf5_input_path = os.path.join(rec_path, 'MIR_Aligned', hdf5_input_filename)
+    df = pd.read_hdf(hdf5_input_path, key='df')
+    mini_cam_timestamps = df.index.values
+    print("Data loaded successfully!")
+    
+    # Define paths for miniscope data
+    miniscope_path = os.path.join(mini_path, 'My_V4_Miniscope')
+    miniscope_timestamps_path = os.path.join(miniscope_path, 'timeStamps.csv')
+    
+    
+    
+    ca_file_path = os.path.join(miniscope_path, f"minian_dataset_{nc_key}.nc")
+    if not os.path.exists(ca_file_path):
+        raise FileNotFoundError(f"No .nc file found using the key '{nc_key}' at {ca_file_path}.")
+    # else:
+    #     nc_files = glob.glob(os.path.join(miniscope_path, '*.nc'))
+    #     if not nc_files:
+    #         raise FileNotFoundError("No .nc files found in the specified miniscope path.")
+            
+    
+    # Load calcium data
+    data = xr.open_dataset(ca_file_path)
+    
+    # Load timestamps for the miniscope data
+    timestamps = pd.read_csv(miniscope_timestamps_path)
+    ts = timestamps['Time Stamp (ms)'].values  # shape (num_ca_frames,)
+    
+    C = data['C'].values  # Calcium signals
+    num_neuron, num_frame = C.shape
+    print("Calcium data shape:", C.shape)
+    print("Timestamps shape:", ts.shape)
+    
+    # Interpolate calcium signals to match miniscope timestamps
+    C_interpolated = []
+    for i_neuron in range(num_neuron):
+        func = interp1d(ts, C[i_neuron, :], kind='linear', bounds_error=False, fill_value='extrapolate')
+        neuron_interp = func(mini_cam_timestamps)
+        C_interpolated.append(neuron_interp)
+    C_interpolated = np.array(C_interpolated)  # shape (num_neuron, N_miniscope_frames)
+    print("Interpolated Ca data shape:", C_interpolated.shape)
+    
+    # Calculate ΔF/F using the interpolated calcium data
+    F0_interpolated = np.percentile(C_interpolated, 20, axis=1, keepdims=True)
+    dF_F_interpolated = (C_interpolated - F0_interpolated) / F0_interpolated
+    print("ΔF/F interpolated shape:", dF_F_interpolated.shape)
+    
+    # Create column names for calcium and ΔF/F data
+    calcium_cols = [f'calcium_roi{i}' for i in range(num_neuron)]
+    dF_F_cols = [f'dF_F_roi{i}' for i in range(num_neuron)]
+    
+    # Transpose arrays to match the DataFrame format (frames x neurons)
+    C_interpolated_transposed = C_interpolated.T
+    dF_F_interpolated_transposed = dF_F_interpolated.T
+    
+    # Create DataFrames for the calcium and ΔF/F signals
+    df_ca = pd.DataFrame(data=C_interpolated_transposed, index=mini_cam_timestamps, columns=calcium_cols)
+    df_dF_F = pd.DataFrame(data=dF_F_interpolated_transposed, index=mini_cam_timestamps, columns=dF_F_cols)
+    
+    df_ca.index.name = 'timestamp_ms'
+    df_dF_F.index.name = 'timestamp_ms'
+    
+    # Merge the new data with the existing DataFrame
+    df_merged = df.join(df_ca, how='inner')
+    df_merged_with_dF_F = df_merged.join(df_dF_F, how='inner')
+    print("DataFrame with Ca and ΔF/F signals merged:")
+    
+    # Save the updated DataFrame to a new HDF5 file
+    updated_hdf5_path = os.path.join(rec_path, 'MIR_Aligned', updated_hdf5_filename)
+    df_merged_with_dF_F.to_hdf(updated_hdf5_path, key='df', mode='w')
+    print(f"Updated DataFrame with Ca and ΔF/F data saved to {updated_hdf5_path}")
+    
+    return df_merged_with_dF_F
+
+
+
+
+def run_mini_dannce_sync(
+    rec_path,
+    mini_path,
+    nc_key,
+    start_frame=0,
+    end_frame=500,
+    threshold_mini=15,
+    threshold_sixcam=3
+):
+    try:
+        resultsss = sync_videos(
+            rec_path,
+            mini_path,
+            start_frame,
+            end_frame,
+            threshold_mini,
+            threshold_sixcam
+        )
+    except Exception as e:
+        print(f"Error while syncing videos: {e}")
+        return
+
+    try:
+        align_miniscope_to_sixcam(resultsss, mini_path, rec_path)
+    except Exception as e:
+        print(f"Error while aligning miniscope to sixcam: {e}")
+        return
+
+    try:
+        load_aligneddannce_and_process_ca_data_custom_key(rec_path, mini_path, nc_key)
+    except Exception as e:
+        print(f"Error while loading aligned data and processing CA data: {e}")
+        return
+

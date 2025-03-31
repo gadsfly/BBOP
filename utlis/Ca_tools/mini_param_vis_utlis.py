@@ -20,7 +20,7 @@ from utlis.Ca_tools.roi_spike_vis_utlis import (
 def vis_param_opti(session_dir):
 # Use your real session directory path.
     # session_dir = "/data/big_rim/rsync_dcc_sum/Oct3V1mini_sorted/20241224PMCLE1/customEntValHere/2025_02_13/11_07_37/My_V4_Miniscope"
-    nc_files = glob.glob(os.path.join(session_dir, "minian_dataset*.nc"))
+    nc_files = glob.glob(os.path.join(session_dir, "*.nc")) #minian_dataset
 
     if not nc_files:
         print("No output files found in the session directory.")
