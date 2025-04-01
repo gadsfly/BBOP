@@ -135,7 +135,7 @@ STATUS_FIELDS_CONFIG = {
         'conditions': [
             {
                 'condition': lambda **kwargs: os.path.exists(
-                    os.path.join(kwargs['subfolder_path'], 'MIR_Aligned', 'aligned_predictions_with_ca_and_dF_F.h5')
+                    os.path.join(kwargs['subfolder_path'], 'MIR_Aligned')) and any(f.startswith('aligned_predictions_with_ca_and_dF_F') and f.endswith('.h5') for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'MIR_Aligned'))
                 ),
                 'value': 1  # Set to 1 if the _and_dF_F file exists
             },
