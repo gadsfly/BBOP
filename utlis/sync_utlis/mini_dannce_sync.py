@@ -315,7 +315,8 @@ def align_miniscope_to_sixcam(resultsss, mini_path, rec_path):
     # We'll store both in a JSON file for simplicity.
     map_data = {
         "time_offset": float(time_offset),  # ensure it's JSON-serializable
-        "mapped_sixcam_frame_indices": mapped_sixcam_frame_indices.tolist()
+        "mapped_sixcam_frame_indices": mapped_sixcam_frame_indices.tolist(),
+        "mini_cam_timestamps": mini_cam_timestamps_s.tolist()
     }
     json_mapping_file = os.path.join(save_path, "frame_mapping.json")
     with open(json_mapping_file, "w") as f:
@@ -640,3 +641,37 @@ def run_mini_dannce_sync(
         print(f"Error while loading aligned data and processing CA data: {e}")
         return
 
+
+# if just producing the json.mapping.... 
+def generate_frame_mapping(
+    rec_path,
+    mini_path,
+    start_frame=0,
+    end_frame=500,
+    threshold_mini=15,
+    threshold_sixcam=3
+):
+    """
+    Only run the parts up to align_miniscope_to_sixcam so that
+    frame_mapping.json is created in MIR_Aligned/.
+    """
+    # 1) sync videos and get the sync result dict
+    try:
+        result = sync_videos(
+            rec_path,
+            mini_path,
+            start_frame,
+            end_frame,
+            threshold_mini,
+            threshold_sixcam
+        )
+    except Exception as e:
+        print(f"[generate_frame_mapping] sync_videos error: {e}")
+        return
+
+    # 2) align miniscope to sixcam, which writes frame_mapping.json
+    try:
+        align_miniscope_to_sixcam(result, mini_path, rec_path)
+    except Exception as e:
+        print(f"[generate_frame_mapping] align_miniscope_to_sixcam error: {e}")
+        return
