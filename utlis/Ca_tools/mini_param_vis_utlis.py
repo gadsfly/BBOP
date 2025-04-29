@@ -193,7 +193,179 @@ def vis_param_all_with_mapping(csv_file_path, mapping_json_path, threshold=10, d
 
 
 
-def vis_param_missing_from_df(df, mapping_json_path, threshold=10, display_only=True):
+def vis_param_missing_from_df_with_mapping(df, mapping_json_path, threshold=10, display_only=True):
+    """
+    Processes sessions from a DataFrame (with a 'path' column) that might be missing in the CSV.
+    For each session directory in df['path']:
+    
+      1. Constructs a candidate rec_path by appending "DANNCE/predict00/save_data_AVG.mat" to the given path.
+      2. Uses an inverted mapping JSON (mini_path -> mapping info) to determine the corresponding mini_path.
+         If no mapping entry is found, the given path is used as the mini_path.
+      3. Looks for .nc files in the mini_path that match "minian_dataset*.nc".  
+         - If exactly one file is found (typically "minian_dataset.nc"), that file is used.
+         - If multiple files are found, if one of the filenames contains an extra identifier (e.g. "denoised"),
+           that file is selected. Otherwise, the first file is chosen.
+      4. Any previous overlay files in the mini_path (files beginning with "overlay_") are removed.
+      5. A temporary copy of the selected netCDF file is created and loaded (using an associated 'timeStamps.csv'
+         from the mini_path).  
+      6. An overlay is generated and its title is set using a combination of folder name components and the
+         extracted combination id from the .nc filename.
+      7. Depending on the `display_only` flag:
+         - If True, the function prints out the intended local and mapped file paths before showing the plot.
+         - If False, the overlay is saved to the mini_path and, if applicable, a duplicate is saved in the 
+           "MIR_Aligned" folder.
+    
+    Parameters:
+       df (pandas.DataFrame): DataFrame containing a 'path' column with session directories.
+       mapping_json_path (str): Path to the mapping JSON file (keys are mini_path).
+       threshold (int, optional): Maximum allowed time_diff for saving the duplicate mapped copy. Defaults to 10.
+       display_only (bool, optional): If True, displays the overlay (while printing intended save paths);
+                                      if False, saves the overlay image(s).
+    """
+    # Load the mapping JSON file
+    try:
+        with open(mapping_json_path, 'r') as f:
+            mapping = json.load(f)
+    except Exception as e:
+        print(f"Error reading mapping JSON file '{mapping_json_path}': {e}")
+        mapping = {}
+        
+    # Create an inverse mapping: candidate rec_path -> mini_path.
+    rec_to_mini = {}
+    for mini_path, entry in mapping.items():
+        rec_path_val = entry.get("rec_path")
+        if rec_path_val:
+            rec_to_mini[rec_path_val] = mini_path
+
+    # Process each session from the DataFrame.
+    for idx, given_rec in df['path'].items():
+        print(f"\nProcessing session (DataFrame index {idx}): {given_rec}")
+        
+        # Construct candidate rec_path using the fixed suffix.
+        candidate_rec = os.path.join(given_rec, "DANNCE", "predict00", "save_data_AVG.mat")
+        mini_path = rec_to_mini.get(candidate_rec, given_rec)
+        if rec_to_mini.get(candidate_rec):
+            print(f"Mapping found for candidate rec_path:\n  {candidate_rec}\n-> Using mini_path: {mini_path}")
+        else:
+            print(f"No mapping found for candidate {candidate_rec}; using the given path as mini_path.")
+            
+        # Find netCDF files in the mini_path.
+        nc_pattern = os.path.join(mini_path, "minian_dataset*.nc")
+        nc_files = glob.glob(nc_pattern)
+        if not nc_files:
+            print(f"No netCDF files found in {mini_path} matching pattern: {nc_pattern}")
+            continue
+        
+        # Choose the proper .nc file.
+        if len(nc_files) == 1:
+            selected_nc = nc_files[0]
+        else:
+            # If multiple files, prefer one containing an extra identifier (e.g., "denoised")
+            selected_nc = None
+            for fname in nc_files:
+                if "denoised" in os.path.basename(fname):
+                    selected_nc = fname
+                    break
+            if not selected_nc:
+                selected_nc = nc_files[0]
+                
+        nc_basename = os.path.basename(selected_nc)
+        print(f"Selected netCDF file: {selected_nc}")
+        
+        # Determine the naming suffix based on the file name.
+        if nc_basename == "minian_dataset.nc":
+            selection = "plot"
+        else:
+            # Remove base part to get the unique identifier.
+            selection = nc_basename.replace("minian_dataset_", "").replace(".nc", "")
+        
+        # Remove old overlay files from the mini_path.
+        old_overlays = glob.glob(os.path.join(mini_path, "overlay_*.png"))
+        for old_file in old_overlays:
+            try:
+                os.remove(old_file)
+                print(f"Removed old overlay file: {old_file}")
+            except Exception as e:
+                print(f"Error removing file {old_file}: {e}")
+        
+        # Create a temporary copy of the .nc file.
+        temp_nc = os.path.join(tempfile.gettempdir(), nc_basename)
+        try:
+            shutil.copy2(selected_nc, temp_nc)
+        except Exception as e:
+            print(f"Error copying {selected_nc} to temporary location: {e}")
+            continue
+        
+        # Assume that time stamps are stored in "timeStamps.csv" in the mini_path.
+        mini_timestamps = os.path.join(mini_path, "timeStamps.csv")
+        try:
+            data, ts = load_minian_data_specific(temp_nc, mini_timestamps)
+        except Exception as e:
+            print(f"Error loading minian data from {temp_nc}: {e}")
+            os.remove(temp_nc)
+            continue
+        
+        # Generate the overlay figure (this helper function should return a figure and an axis).
+        max_proj = data['max_proj'].values
+        fig, ax = overlay_all_roi_edges_no_show(data, max_proj)
+        
+        # Compose a title using folder parts and the combination id.
+        try:
+            path_parts = mini_path.split(os.sep)
+            title = "_".join([path_parts[-5], path_parts[-3], path_parts[-2]])
+        except Exception:
+            title = "session"
+        # Extract combination_id from the .nc file name (if not the default, include the extra part).
+        combination_id = "" if nc_basename == "minian_dataset.nc" else selection
+        ax.set_title(f"{title}_{combination_id}")
+        
+        # Determine local output file path.
+        local_output_path = os.path.join(mini_path, f"overlay_{selection}.png")
+        
+        # --- Saving logic or display info ---
+        # Check if there is a mapping for the mini_path.
+        mapping_entry = mapping.get(mini_path)
+        mapped_output_path = None
+        if mapping_entry:
+            time_diff = mapping_entry.get("time_diff")
+            mapped_rec = mapping_entry.get("rec_path")
+            if time_diff is not None and time_diff < threshold and mapped_rec:
+                dest_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(mapped_rec))), "MIR_Aligned")
+                os.makedirs(dest_dir, exist_ok=True)
+                mapped_output_path = os.path.join(dest_dir, f"overlay_{selection}.png")
+        
+        if display_only:
+            # In display mode, just print the intended file paths.
+            print(f"(Display Mode) Would save local overlay to: {local_output_path}")
+            if mapped_output_path:
+                print(f"(Display Mode) Would save mapped overlay to: {mapped_output_path}")
+            else:
+                print("(Display Mode) No valid mapping found for a duplicate save.")
+            plt.show()
+        else:
+            # Save the overlay locally.
+            try:
+                fig.savefig(local_output_path)
+                print(f"Saved local overlay to: {local_output_path}")
+            except Exception as e:
+                print(f"Error saving overlay to {local_output_path}: {e}")
+            # Also save the mapped duplicate if applicable.
+            if mapped_output_path:
+                try:
+                    fig.savefig(mapped_output_path)
+                    print(f"Saved mapped overlay to: {mapped_output_path}")
+                except Exception as e:
+                    print(f"Error saving mapped overlay to {mapped_output_path}: {e}")
+            else:
+                print("No mapping found or mapping invalid; skipping mapped save.")
+        
+        # Cleanup: close the figure and remove the temporary .nc file.
+        plt.close(fig)
+        try:
+            os.remove(temp_nc)
+        except Exception as e:
+            print(f"Error removing temporary file {temp_nc}: {e}")
+
     """
     Processes sessions from a DataFrame (with a 'path' column) that were not handled via the CSV mapping.
     For each session directory in df['path']:
