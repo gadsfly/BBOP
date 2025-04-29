@@ -122,6 +122,9 @@ def log_folder_to_parquet_sep(base_folder, failed_paths_file, config, force_resc
             # Process and save each experiment's log separately
             for rec_file_data in folder_log['rec_files_data']:
                 rec_file = rec_file_data['rec_file']
+
+                rec_file_data['rec_path'] = os.path.join(base_folder, date_folder, rec_file) #2504 some stipud person like myself finally decided it is a hassle to keep putting the same things together...
+
                 subfolder_save_path = os.path.join(base_folder, date_folder, rec_file, "folder_log.parquet")
 
                 # Ensure the experiment/rec_file folder exists
