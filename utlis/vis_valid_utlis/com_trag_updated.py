@@ -20,7 +20,7 @@ def load_com(file_path):
     data = sio.loadmat(file_path)
     return data['com']
 
-def plot_3d_trajectory_com(com_data, graph_title, com_folder_save):
+def plot_3d_trajectory_com(com_data, graph_title, com_folder_save, zmin, zmax):
     # Extract positions
     x_positions = com_data[:, 0]
     y_positions = com_data[:, 1]
@@ -42,6 +42,7 @@ def plot_3d_trajectory_com(com_data, graph_title, com_folder_save):
     ax.set_xlabel('X Position')
     ax.set_ylabel('Y Position')
     ax.set_zlabel('Z Position')
+    ax.set_zlim(zmin, zmax)
     fig.colorbar(scatter, ax=ax, label='Time Step')
     plt.savefig(os.path.join(com_folder_save,'com_3d_trajectory_plot.jpg'), format='jpg')
     plt.show()
@@ -324,7 +325,7 @@ def generate_com_video(com_data, base_folder, graph_title, save_path, cam='Camer
             writer.grab_frame()
 
 
-def plot_com_all(base_folder, com_folder_name='COM/predict00', perform_jump_indices=False, perform_video_generation=False, perform_generate_com_video=False):
+def plot_com_all(base_folder, com_folder_name='COM/predict00', perform_jump_indices=False, perform_video_generation=False, perform_generate_com_video=False, zmin=-10, zmax=30):
     # base_base_folder = os.path.dirname(os.path.normpath(base_folder))
     folder_name = os.path.basename(os.path.normpath(base_folder))
     graph_title = f'COM_{folder_name}' #240716weightsCOM_
@@ -338,7 +339,7 @@ def plot_com_all(base_folder, com_folder_name='COM/predict00', perform_jump_indi
         
         com_data = load_com(com_path)
         print(f"plotting com_traga for {base_folder}")
-        plot_3d_trajectory_com(com_data, graph_title, com_folder_save)
+        plot_3d_trajectory_com(com_data, graph_title, com_folder_save, zmin, zmax)
         analyze_com_trajectory(com_data, com_folder_save)
         
         if perform_jump_indices:
