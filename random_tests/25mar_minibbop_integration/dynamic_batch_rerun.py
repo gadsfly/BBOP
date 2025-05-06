@@ -34,6 +34,7 @@ for sess in sessions:
             "--session_dir", session_dir,
         ]
         # For non-dynamic scripts, we add any extra keys directly.
+        
         for key, value in sess.items():
             if key in ["session_dir", "animal", "script"]:
                 continue
