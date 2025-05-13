@@ -7,6 +7,7 @@ import xarray as xr
 import glob
 import os
 
+
 def load_minian_data(minian_path, timestamps_path):
     """Load minian data and timestamps from given paths."""
     nc_files = glob.glob(f"{minian_path}/*.nc")
@@ -312,3 +313,67 @@ def overlay_all_roi_edges_no_show(data, max_proj):
     
     # 8) Return the figure and axes.
     return fig, ax
+
+
+
+
+def load_session_data(miniscope_folder: str, tolerance_ms: int = 5) -> pd.DataFrame:
+    """
+    Returns a DataFrame with:
+      - roi_0 … roi_{R‑1}  (ΔF/F for each ROI)
+      - time_ms             (common timestamp)
+      - qw, qx, qy, qz      (head–orientation quaternion)
+    """
+    # 1) Head orientation
+    head_csv = os.path.join(miniscope_folder, 'headOrientation.csv')
+    head = pd.read_csv(head_csv).rename(columns={'Time Stamp (ms)': 'time_ms'})
+
+    # 2) Ca data + timestamps
+    time_csv = os.path.join(miniscope_folder, 'timeStamps.csv')
+    data, ts = load_minian_data(miniscope_folder, time_csv)
+
+    # 3) ΔF/F (shape = [n_rois, n_frames])
+    dF_F = calculate_dff(data)
+
+    # 4) Build Ca DataFrame (transpose so rows = frames)
+    n_rois, n_frames = dF_F.shape
+    ca_df = pd.DataFrame(
+        dF_F.T,
+        columns=[f'roi_{i}' for i in range(n_rois)]
+    )
+    ca_df['time_ms'] = ts  # now len(ts)==n_frames matches ca_df
+
+    # 5) Align via nearest‑neighbor merge
+    # aligned = pd.merge_asof(
+    #     ca_df.sort_values('time_ms'),
+    #     head.sort_values('time_ms'),
+    #     on='time_ms',
+    #     direction='nearest',
+    #     tolerance=tolerance_ms
+    # )
+
+    # new: exact‐timestamp join
+    aligned = pd.merge(
+        ca_df,
+        head[['time_ms','qw','qx','qy','qz']],
+        on='time_ms',
+        how='inner'
+    )
+
+
+    return aligned
+
+
+def visualize_session(miniscope_folder: str):
+    # 1) load & align
+    df = load_session_data(miniscope_folder, tolerance_ms=0)
+
+    # 2) pull raw A & max projection
+    data, _ = load_minian_data(miniscope_folder,
+                               os.path.join(miniscope_folder, 'timeStamps.csv'))
+    max_proj = data['max_proj'].values
+
+    # 3) overlay & show
+    overlay_all_roi_edges(data, max_proj)
+
+    return df
