@@ -25,7 +25,8 @@ def find_calib_file(base_folder):
 # /hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_26/1686940_left/DANNCE/predict_results/six_points_multi_test_0calib
 # /hpc/group/tdunn/lq53/dannce_chris_calib/240503rec_240229V1left/result_folder/train_newcom_70frames_100epo/DANNCE/predict_results
 ###############################################################################################################
-base_path =  "/data/big_rim/rsync_dcc_sum/25Apri_social/2025_05_02/1shank3KOM_boxedshank3KOF"
+base_path =  "/data/big_rim/rsync_dcc_sum/Oct3V1/2024_11_06/20241015pmcr2_17_13"
+# "/data/big_rim/rsync_dcc_sum/25Apri_social/2025_05_02/1shank3KOM_boxedshank3KOF"
 #'/hpc/group/tdunn/Bryan_Rigs/BigOpenField/Oct3V1/2024_11_13/20240910v1r_cricket_cyliner_test_16_17' #'/hpc/group/tdunn/Bryan_Rigs/BigOpenField/Oct3V1/2024_11_01/20240910V1r_BO_11_35' #'/hpc/group/tdunn/Bryan_Rigs/BigOpenField/Oct3V1/2024_11_13/20240910v1r_cricket_cyliner_test_16_17'
 cammm = 3
 video_path = os.path.join(base_path, f'videos/Camera{cammm}/0.mp4')
@@ -34,7 +35,7 @@ pred_folder = 'DANNCE/predict00'
 # label3d_path = '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_28/1686941_left_right_2/pos_synced_1686941_left_right_2_2024_06_28_1686941_left_label3d_dannce.mat' #calib
 pred_path = os.path.join(base_path, pred_folder, 'save_data_AVG.mat') #  smoothed_prediction_AVG0.mat
 N_FRAMES = 100
-START_FRAME = 0
+START_FRAME = 12000
 ANIMAL= 'mouse20' #'mouse22'
 cam = f'Camera{cammm}' 
 vid_title = f'combined_cam{cammm}_{N_FRAMES}_after{START_FRAME}' #after500

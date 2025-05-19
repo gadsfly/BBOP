@@ -1,154 +1,147 @@
 #!/usr/bin/env python3
-"""
-nooooooooooooooooooooooooooooooo the aligned and not aliged things should not be on the same thing... this is shit
-Standalone comparison of computed head Euler angles vs. hardware BNO measurements.
-
-Usage:
-    python full_angle_calculation_hardware_head_valid.py \
-        --hdf5 /path/to/aligned_predictions_with_ca_and_dF_F.h5 \
-        --mapping /path/to/mini_to_rec_mapping.json
-"""
-import os
-import sys
-import json
-import argparse
-import pandas as pd
 import numpy as np
+import pandas as pd
 from scipy.spatial.transform import Rotation as R
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from pathlib import Path
 
+# --- Load filtered BNO data ---
+bno_csv = "/data/big_rim/rsync_dcc_sum/Oct3V1/2024_11_06/20241015pmcr2_17_13/MIR_Aligned/headOrientation_filtered.csv"
+df_bno = pd.read_csv(bno_csv).rename(columns={'Time Stamp (ms)': 'time_ms'})
+times = df_bno['time_ms'].to_numpy()
+quats = df_bno[['qx','qy','qz','qw']].to_numpy()
+rots = R.from_quat(quats)
+bno_mats = rots.as_matrix()
 
-def normalize(v: np.ndarray) -> np.ndarray:
-    norm = np.linalg.norm(v)
-    return v if norm < 1e-8 else v / norm
+print(f"BNO frames: {len(times)}")
+print(f"BNO rotation mats shape: {bno_mats.shape}")
 
+# --- Load prediction H5 and compute head frames ---
+base_path = "/data/big_rim/rsync_dcc_sum/Oct3V1/2024_11_06/20241015pmcr2_17_13"
+aligned_dir = Path(base_path) / 'MIR_Aligned'
+h5_paths = list(aligned_dir.glob('aligned_predictions_with_ca_and_dF_F_*.h5'))
+if not h5_paths:
+    raise FileNotFoundError(f"No .h5 files found in {aligned_dir}")
+print("H5 files:", h5_paths)
 
-def compute_head_euler(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Compute head Euler angles (xyz, degrees) for every row in df.
-    Assumes columns kp1_x,kp1_y,kp1_z (EarL), kp2_*, kp3_* (Snout).
-    """
-    times = []
-    yaws, pitches, rolls = [], [], []
+df_pred = pd.read_hdf(str(h5_paths[0]), key='df')
+print(f"Predicted frames: {len(df_pred)}")
 
-    for idx, row in df.iterrows():
-        earL = row[['kp1_x','kp1_y','kp1_z']].to_numpy()
-        earR = row[['kp2_x','kp2_y','kp2_z']].to_numpy()
-        snout = row[['kp3_x','kp3_y','kp3_z']].to_numpy()
-        ear_mid = (earL + earR) / 2.0
-        head_x = normalize(snout - ear_mid)
-        temp_y = earR - earL
-        head_y = normalize(temp_y - np.dot(temp_y, head_x) * head_x)
-        head_z = normalize(np.cross(head_x, head_y))
-        R_head = np.column_stack((head_x, head_y, head_z))
-        # euler = R.from_matrix(R_head).as_euler('xyz', degrees=True)
-        # times.append(idx)
-        # yaws.append(euler[0])
-        # pitches.append(euler[1])
-        # rolls.append(euler[2])
-        roll, pitch, yaw = R.from_matrix(R_head).as_euler('xyz', degrees=True)
-        rolls.append(roll)
-        pitches.append(pitch)
-        yaws.append(yaw)
+# --- Compute head rotation matrices ---
+def normalize(v):
+    n = np.linalg.norm(v, axis=1, keepdims=True)
+    return np.where(n < 1e-8, v, v / n)
 
+R_heads = []
+for _, row in df_pred.iterrows():
+    earL  = row[['kp1_x','kp1_y','kp1_z']].to_numpy()
+    earR  = row[['kp2_x','kp2_y','kp2_z']].to_numpy()
+    snout = row[['kp3_x','kp3_y','kp3_z']].to_numpy()
 
-    out = pd.DataFrame({
-        'time': times,
-        'yaw_calc': np.degrees(np.unwrap(np.radians(yaws))),
-        'pitch_calc': np.degrees(np.unwrap(np.radians(pitches))),
-        'roll_calc': np.degrees(np.unwrap(np.radians(rolls)))
-    })
-    return out
+    mid = (earL + earR) / 2.0
+    x = normalize((snout - mid).reshape(1,3))[0]
+    temp = (earR - earL).reshape(1,3)
+    y = normalize((temp - np.dot(temp, x) * x).reshape(1,3))[0]
+    z = np.cross(x, y)
+    z = z / (np.linalg.norm(z) + 1e-8)
+    R_heads.append(np.column_stack((x, y, z)))
 
+R_heads = np.stack(R_heads)
+print(f"Head rotation mats shape: {R_heads.shape}")
 
-def load_bno_euler(bno_csv: str) -> pd.DataFrame:
-    """
-    Read headOrientation.csv (ms, qw,qx,qy,qz) and convert to euler xyz (deg).
-    """
-    df = pd.read_csv(bno_csv)
-    quat = df[['qx','qy','qz','qw']].to_numpy()
-    # euler = R.from_quat(quat).as_euler('xyz', degrees=True)
-    # df['yaw_bno'] = np.degrees(np.unwrap(np.radians(euler[:,0])))
-    # df['pitch_bno'] = np.degrees(np.unwrap(np.radians(euler[:,1])))
-    # df['roll_bno'] = np.degrees(np.unwrap(np.radians(euler[:,2])))
-    roll_bno, pitch_bno, yaw_bno = R.from_quat(quat).as_euler('xyz', degrees=True).T
-    df['yaw_bno']   = np.degrees(np.unwrap(np.radians(yaw_bno)))
-    df['pitch_bno'] = np.degrees(np.unwrap(np.radians(pitch_bno)))
-    df['roll_bno']  = np.degrees(np.unwrap(np.radians(roll_bno)))
+assert R_heads.shape == bno_mats.shape, \
+    f"Frame mismatch: pred {R_heads.shape[0]}, bno {bno_mats.shape[0]}"
 
-    df.rename(columns={'Time Stamp (ms)':'time_ms'}, inplace=True)
-    return df[['time_ms','yaw_bno','pitch_bno','roll_bno']]
+# --- Precompute relative rotations (correct order) ---
+R0_bno = bno_mats[0]
+R_bno_rel = np.einsum('ij,nkj->nki', np.linalg.inv(R0_bno), bno_mats)
+R0_pred = R_heads[0]
+R_pred_rel = np.einsum('ij,nkj->nki', np.linalg.inv(R0_pred), R_heads)
 
+# --- Initial triangle vertices (relative) ---
+earL0 = df_pred.iloc[0][['kp1_x','kp1_y','kp1_z']].to_numpy()
+earR0 = df_pred.iloc[0][['kp2_x','kp2_y','kp2_z']].to_numpy()
+sn0   = df_pred.iloc[0][['kp3_x','kp3_y','kp3_z']].to_numpy()
+mid0  = (earL0 + earR0) / 2.0
+verts0 = np.vstack([earL0-mid0, earR0-mid0, sn0-mid0])
 
-def merge_and_save(calc: pd.DataFrame, bno: pd.DataFrame, out_folder: str):
-    """
-    Align on nearest timestamp and save comparison CSV.
-    """
-    calc = calc.copy()
-    start = calc['time'].iloc[0]
-    # compute time_ms: handle datetime or numeric
-    if pd.api.types.is_datetime64_any_dtype(calc['time']):
-        time_ms = (calc['time'] - start).dt.total_seconds() * 1000
-    else:
-        time_ms = (calc['time'] - start) * 1000
-    calc['time_ms'] = time_ms.astype(int)
+# --- Frame 0 sanity check ---
+p0 = verts0 @ R_pred_rel[0].T
+b0 = verts0 @ R_bno_rel[0].T
 
-    merged = pd.merge_asof(
-        calc.sort_values('time_ms'),
-        bno.sort_values('time_ms'),
-        on='time_ms',
-        suffixes=('_calc','_bno'),
-        direction='nearest'
-    )
-    out_csv = os.path.join(out_folder, 'head_compare.csv')
-    merged.to_csv(out_csv, index=False)
-    print(f"Saved comparison → {out_csv}")
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(p0[:,0], p0[:,1], p0[:,2], c='r', label='Pred')
+ax.scatter(b0[:,0], b0[:,1], b0[:,2], c='b', label='BNO')
+ax.legend()
+plt.show()
 
+# --- Compute and apply multi-frame Procrustes fit ---
+# pick a handful of frames (e.g., 10) to stabilize the fit
+frames_to_fit = np.linspace(0, len(times)-1, num=10, dtype=int)
 
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument('--hdf5',   required=True, help='aligned_predictions .h5 file')
-    p.add_argument('--mapping', required=True, help='mini_to_rec_mapping.json')
-    args = p.parse_args()
+p_all = np.vstack([verts0 @ R_pred_rel[i].T for i in frames_to_fit])
+b_all = np.vstack([verts0 @ R_bno_rel[i].T   for i in frames_to_fit])
 
-    h5 = os.path.abspath(args.hdf5)
-    rec_folder = os.path.dirname(os.path.dirname(h5))
-    print(f"Recording folder: {rec_folder}")
+rot_fit, rmsd = R.align_vectors(p_all, b_all)
+R_fit_mat = rot_fit.as_matrix()
+print(f"Multi-frame fit RMSD: {rmsd:.6f}")
 
-    # 1) load and compute
-    df = pd.read_hdf(h5, key='df')
-    calc = compute_head_euler(df)
-    out_calc = os.path.join(rec_folder, 'head_calc.csv')
-    calc.to_csv(out_calc, index=False)
-    print(f"Saved calculated head angles → {out_calc}")
+# apply that pre-rotation to your BNO basis
+verts0_bno = verts0 @ R_fit_mat.T
 
-    # 2) load mapping and find entry by rec_path
-    with open(args.mapping) as f:
-        mapping = json.load(f)
-    candidates = [k for k,v in mapping.items()
-                  if v.get('rec_path') and rec_folder in v['rec_path']]
-    if not candidates:
-        print("ERROR: could not find mapping entry via rec_path containing rec_folder.")
-        print("Available rec_path values:")
-        for v in mapping.values():
-            rp = v.get('rec_path')
-            if rp: print("  ", rp)
-        sys.exit(1)
-    daq_path = candidates[0]
-    print(f"Found DAQ path: {daq_path}")
+# verify Frame 0 after multi-frame alignment
+b0_aligned = verts0_bno @ R_bno_rel[0].T
+print("Frame 0 BNO pts after multi-frame alignment:\n", b0_aligned)
 
-    # 3) load BNO data
-    bno_csv = os.path.join(daq_path, 'headOrientation.csv')
-    if not os.path.exists(bno_csv):
-        print(f"ERROR: {bno_csv} not found.")
-        sys.exit(1)
-    bno = load_bno_euler(bno_csv)
-    out_bno = os.path.join(rec_folder, 'head_bno_euler.csv')
-    bno.to_csv(out_bno, index=False)
-    print(f"Saved BNO-derived Euler angles → {out_bno}")
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(p0[:,0], p0[:,1], p0[:,2], c='r', label='Pred')
+ax.scatter(b0_aligned[:,0], b0_aligned[:,1], b0_aligned[:,2], c='b', label='BNO aligned')
+ax.legend()
+plt.show()
 
-    # 4) merge and save
-    merge_and_save(calc, bno, rec_folder)
+# --- Determine plot limits dynamically based on initial (aligned) frame ---
+all0 = np.vstack([p0, b0_aligned])
+lim = np.max(np.abs(all0)) * 1.1
 
+# --- Set up animation ---
+fig2 = plt.figure(figsize=(8,8))
+ax2 = fig2.add_subplot(111, projection='3d')
+ax2.set_xlim(-lim, lim)
+ax2.set_ylim(-lim, lim)
+ax2.set_zlim(-lim, lim)
+ax2.set_xlabel('X'); ax2.set_ylabel('Y'); ax2.set_zlabel('Z')
+pred_line, = ax2.plot([], [], [], 'r-o', label='Predicted')
+bno_line,  = ax2.plot([], [], [], 'b--o', label='BNO')
+ax2.legend()
 
-if __name__ == '__main__':
-    main()
+def update(i):
+    p_pts = verts0 @ R_pred_rel[i].T
+    b_pts = verts0_bno @ R_bno_rel[i].T
+
+    pred_line.set_data(p_pts[:,0], p_pts[:,1])
+    pred_line.set_3d_properties(p_pts[:,2])
+
+    bno_line.set_data(b_pts[:,0], b_pts[:,1])
+    bno_line.set_3d_properties(b_pts[:,2])
+
+    ax2.set_title(f"t = {times[i]} ms")
+    return pred_line, bno_line
+
+ani = FuncAnimation(fig2, update, frames=len(times), interval=50, blit=False)
+
+# --- Save animation (mp4, fallback to GIF) ---
+output_mp4 = "pred_ave_bno_test_orientation_anim.mp4"
+try:
+    ani.save(output_mp4, writer='ffmpeg', fps=10)
+    print("Saved animation to", output_mp4)
+except Exception as e:
+    print("ffmpeg save failed:", e)
+    try:
+        output_gif = "pred_ave_bno_test_orientation_anim.gif"
+        ani.save(output_gif, writer='pillow', fps=10)
+        print("Saved animation to", output_gif)
+    except Exception as e2:
+        print("Pillow save failed:", e2)
