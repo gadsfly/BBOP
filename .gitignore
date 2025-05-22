@@ -1,3 +1,5 @@
 __pycache__/
 *.mp4
-
+/home/lq53/mir_repos/BBOP/random_tests/25may_v1_FOV/all_data_250520_20sets.csv
+*.json
+*.csv
