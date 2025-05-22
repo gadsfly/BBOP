@@ -415,6 +415,11 @@ def load_aligneddannce_and_process_ca_data(rec_path, mini_path):
     df_merged_with_dF_F.to_hdf(updated_hdf5_path, key='df', mode='w')
     print(f"Updated DataFrame with Ca and \u0394F/F data saved to {updated_hdf5_path}")
 
+    # also save as CSV
+    csv_output_path = os.path.join(rec_path, 'MIR_Aligned', 'aligned_predictions_with_ca_and_dF_F.csv')
+    df_merged_with_dF_F.to_csv(csv_output_path, index=True)
+    print(f"CSV saved to {csv_output_path}")
+
 
     return df_merged_with_dF_F
 
@@ -509,6 +514,12 @@ def load_aligneddannce_and_process_ca_data_custom(rec_path, mini_path, nc_file=N
     updated_hdf5_path = os.path.join(rec_path, 'MIR_Aligned', 'aligned_predictions_with_ca_and_dF_F.h5')
     df_merged_with_dF_F.to_hdf(updated_hdf5_path, key='df', mode='w')
     print(f"Updated DataFrame with Ca and ΔF/F data saved to {updated_hdf5_path}")
+
+        # also save as CSV
+    csv_output_path = os.path.join(rec_path, 'MIR_Aligned', 'aligned_predictions_with_ca_and_dF_F.csv')
+    df_merged_with_dF_F.to_csv(csv_output_path, index=True)
+    print(f"CSV saved to {csv_output_path}")
+
     
     return df_merged_with_dF_F
 
@@ -601,6 +612,15 @@ def load_aligneddannce_and_process_ca_data_custom_key(rec_path, mini_path, nc_ke
     updated_hdf5_path = os.path.join(rec_path, 'MIR_Aligned', updated_hdf5_filename)
     df_merged_with_dF_F.to_hdf(updated_hdf5_path, key='df', mode='w')
     print(f"Updated DataFrame with Ca and ΔF/F data saved to {updated_hdf5_path}")
+
+    
+    csv_output_path = os.path.join(
+        rec_path, 'MIR_Aligned',
+        f'aligned_predictions_with_ca_and_dF_F_{nc_key}.csv'
+    )
+    df_merged_with_dF_F.to_csv(csv_output_path, index=True)
+    print(f"CSV saved to {csv_output_path}")
+
     
     return df_merged_with_dF_F
 
