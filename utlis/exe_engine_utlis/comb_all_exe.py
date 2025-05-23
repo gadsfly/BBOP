@@ -6,7 +6,8 @@ import datetime
 import sys
 sys.path.append(os.path.abspath('../..'))
 from utlis.exe_engine_utlis.mir_generate_param_modu import mir_generate_param_z
-from utlis.sync_utlis.sync_df_utlis import process_sync
+# from utlis.sync_utlis.sync_df_utlis import process_sync
+from utlis.exe_engine_utlis.exe_single_utlis import rerun_with_prev_calib
 
 # Function to process each "unit" (rec_file) and update its status in the corresponding Parquet file
 def process_unit_and_update_status_mirgenparam(rec_file_data, base_folder):
@@ -78,7 +79,7 @@ def sequential_process_and_update_mirgenparam(filtered_table, base_folder):
 
 
 # Function to process each "unit" (rec_file) and update its status in the corresponding Parquet file sequentially
-def process_unit_and_update_status_sync(rec_file_data, base_folder):
+def process_unit_and_update_status_sync(rec_file_data, base_folder, threshold=2, max_frames=300, min_frame=0):
     date_folder = rec_file_data['date_folder']
     rec_file = rec_file_data['rec_file']
     
@@ -94,7 +95,8 @@ def process_unit_and_update_status_sync(rec_file_data, base_folder):
     print(f"Processing: {combined_path}")
     
     # Call the sync processing function
-    sync_status = process_sync(combined_path, threshold=2, max_frames=300) #base_folder, threshold=3, max_frames=100, min_frame=0):
+    sync_status = rerun_with_prev_calib(combined_path, threshold, max_frames, min_frame)
+    # sync_status = process_sync(combined_path, threshold, max_frames) #base_folder, threshold=3, max_frames=100, min_frame=0):
     if sync_status is True:
         print("Sync ran successfully.")
     else:
@@ -125,8 +127,8 @@ def process_unit_and_update_status_sync(rec_file_data, base_folder):
     print(f"Updated Parquet file at {parquet_file_path} with new status.")
    
 # Sequentially process and update the status for each rec_file
-def sequential_process_and_update_sync(filtered_table, base_folder):
+def sequential_process_and_update_sync(filtered_table, base_folder, threshold=2, max_frames=300, min_frame=0):
     filtered_df = filtered_table.to_pandas()
     
     for _, row in filtered_df.iterrows():
-        process_unit_and_update_status_sync(row.to_dict(), base_folder)
+        process_unit_and_update_status_sync(row.to_dict(), base_folder,threshold, max_frames, min_frame)
