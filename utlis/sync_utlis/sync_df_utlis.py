@@ -276,6 +276,10 @@ def process_sync(base_folder, threshold=3, max_frames=100, min_frame=0):
     if calib_file is None:
         print('No calib file after mir_generate_param is found. Please generate it first.')
         return
+    
+    if os.path.basename(calib_file).startswith('df_'):
+        print(f"Calibration file {calib_file} already has 'df_' prefix. Skipping processing.")
+        return False
 
     # Check for corrupted video files
     for camera in cameras:
@@ -300,18 +304,18 @@ def process_sync(base_folder, threshold=3, max_frames=100, min_frame=0):
         return False
     
     calib_nammm = os.path.basename(calib_file)
-    folder_name = os.path.basename(base_folder)
-    save_path = os.path.join(base_folder, f'df_synced_{folder_name}_{calib_nammm}')
+    # folder_name = os.path.basename(base_folder)
+    save_path = os.path.join(base_folder, f'df_synced_{calib_nammm}')
 
     # Align frames and process calibration data
     try:
         align_frames(calib_file, drop_frames, save_path)
-        print(f"Alignment successful for {base_folder}")
+        print(f"Alignment successful for {base_folder} with {calib_file} ")
 
         prev_calib_folder = os.path.join(base_folder, 'prev_calib')
         os.makedirs(prev_calib_folder, exist_ok=True)
         shutil.move(calib_file, prev_calib_folder)
-        print(f"Moved prior calibration file to {prev_calib_folder}")
+        print(f"Moved prior calibration file {calib_file} to {prev_calib_folder}")
         return True
         # time.sleep(1)
 
