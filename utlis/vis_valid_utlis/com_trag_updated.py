@@ -356,7 +356,7 @@ def plot_com_all(base_folder, com_folder_name='COM/predict00', perform_jump_indi
     else:
         print(f"no com file found for {base_folder}")
 
-            
+
 
 
 def adjust_viewport(kpts_2d, margin=70):
