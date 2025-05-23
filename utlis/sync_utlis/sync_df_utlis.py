@@ -304,7 +304,9 @@ def process_sync(base_folder, threshold=3, max_frames=100, min_frame=0):
         return False
     
     calib_nammm = os.path.basename(calib_file)
+
     # folder_name = os.path.basename(base_folder)
+
     save_path = os.path.join(base_folder, f'df_synced_{calib_nammm}')
 
     # Align frames and process calibration data
