@@ -437,7 +437,7 @@ import matplotlib.gridspec as gridspec
 # -----------------------
 # Load the DataFrame
 # -----------------------
-hdf5_file_path = hdf5_file_path = "/data/big_rim/rsync_dcc_sum/Oct3V1/2024_10_25/20241002PMCr2_17_05/MIR_Aligned/aligned_predictions_with_ca_and_dF_F.h5"
+hdf5_file_path = "/data/big_rim/rsync_dcc_sum/Oct3V1/2024_10_25/20241002PMCr2_17_05/MIR_Aligned/aligned_predictions_with_ca_and_dF_F.h5"
 
 # "C:/Users/shiny/Desktop/ShinySw/code/aligned_predictions_with_ca_and_dF_F.h5"
 df = pd.read_hdf(hdf5_file_path, key='df')

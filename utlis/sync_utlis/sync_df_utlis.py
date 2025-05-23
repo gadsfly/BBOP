@@ -304,18 +304,20 @@ def process_sync(base_folder, threshold=3, max_frames=100, min_frame=0):
         return False
     
     calib_nammm = os.path.basename(calib_file)
-    folder_name = os.path.basename(base_folder)
+
+    # folder_name = os.path.basename(base_folder)
+
     save_path = os.path.join(base_folder, f'df_synced_{calib_nammm}')
 
     # Align frames and process calibration data
     try:
         align_frames(calib_file, drop_frames, save_path)
-        print(f"Alignment successful for {base_folder}")
+        print(f"Alignment successful for {base_folder} with {calib_file} ")
 
         prev_calib_folder = os.path.join(base_folder, 'prev_calib')
         os.makedirs(prev_calib_folder, exist_ok=True)
         shutil.move(calib_file, prev_calib_folder)
-        print(f"Moved prior calibration file to {prev_calib_folder}")
+        print(f"Moved prior calibration file {calib_file} to {prev_calib_folder}")
         return True
         # time.sleep(1)
 
