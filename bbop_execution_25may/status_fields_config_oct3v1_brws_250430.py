@@ -92,6 +92,7 @@ STATUS_FIELDS_CONFIG = {
             }            
         ]
     },
+
     'miniscope': {
         'default': 0,
         'conditions': [
