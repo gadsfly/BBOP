@@ -157,7 +157,8 @@ def analyze_com_trajectory(com_data, save_folder):
 
 
 def generate_jump_video(com_data, base_folder, jump_indices, graph_title, save_path, cam='Camera1'):
-    if jump_indices == []:
+    # if jump_indices == []:c#somehow caused error....
+    if len(jump_indices) == 0:
         return
     
     label3d_path = find_calib_file(base_folder)

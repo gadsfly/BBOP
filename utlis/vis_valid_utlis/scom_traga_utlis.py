@@ -211,7 +211,7 @@ def plot_com_all_social(
         return
 
     raw = load_com(com_mat)
-
+    print(f"plotting com_traga for {base_folder}")
     # if your MAT stores shape (frames, 3, n_animals) already, just use it
     if raw.ndim == 3 and raw.shape[1] == 3:
         com_data = raw

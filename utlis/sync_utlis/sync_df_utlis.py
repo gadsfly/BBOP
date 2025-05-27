@@ -94,6 +94,13 @@ def process_videos(base_path, cameras, threshold, max_frames, min_frame):
 
     # print(drop_frames)
 
+    # Save the figure to base_path
+    save_path = os.path.join(base_path, "6cam_sync.png")
+    plt.savefig(save_path)
+    print(f"Saved brightness plot to {save_path}")
+
+    plt.close()  # Closes the figure to free memory
+
     return drop_frames
 
 
