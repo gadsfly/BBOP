@@ -12,6 +12,8 @@ from utlis.projection import *
 from utlis.sync_utlis.sync_df_utlis import find_calib_file
 import shutil
 from scipy.signal import medfilt
+
+from com_traga_utlis import plot_3d_trajectory_com, analyze_com_trajectory, detect_jumps,generate_jump_video,generate_com_video
 # ——————————————————————————————————————————————————————————
 # assume the following single-animal functions are defined as before:
 #   load_com, plot_3d_trajectory_com, analyze_com_trajectory,
