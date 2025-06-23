@@ -206,7 +206,27 @@ STATUS_FIELDS_CONFIG = {
                 'value': 0.5  # Set to 0.5 if the basic file exists
             }
         ]
-    }
+    },
+
+
+        'mini_rec_sync_com':{
+        'default': 0,  # Default value when neither file is found
+        'conditions': [
+            {
+                'condition': lambda **kwargs: os.path.exists(
+                    os.path.join(kwargs['subfolder_path'], 'MIR_Aligned')) and any(f.startswith('only_com') and f.endswith('.h5') for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'MIR_Aligned'))
+                ),
+                'value': 1  # Set to 1 if the _and_dF_F file exists
+            },
+            {
+                'condition': lambda **kwargs: os.path.exists(
+                    os.path.join(kwargs['subfolder_path'], 'MIR_Aligned', 'aligned_predictions_with_ca.h5')
+                ),
+                'value': 0.5  # Set to 0.5 if the basic file exists
+            }
+        ]
+    },
+
 
     # 'z_adjusted': {
     #     'default': 2,  # Default NO-NEED
