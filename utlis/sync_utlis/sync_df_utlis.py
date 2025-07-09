@@ -90,7 +90,7 @@ def process_videos(base_path, cameras, threshold, max_frames, min_frame):
     plt.xlabel('Frame Number, first 3 min')
     plt.ylabel('Average Brightness')
     plt.legend()
-    plt.show()
+    
 
     # print(drop_frames)
 
@@ -98,7 +98,8 @@ def process_videos(base_path, cameras, threshold, max_frames, min_frame):
     save_path = os.path.join(base_path, "6cam_sync.png")
     plt.savefig(save_path)
     print(f"Saved brightness plot to {save_path}")
-
+    
+    plt.show()
     plt.close()  # Closes the figure to free memory
 
     return drop_frames
