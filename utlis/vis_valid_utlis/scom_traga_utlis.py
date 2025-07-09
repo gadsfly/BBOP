@@ -155,38 +155,116 @@ def generate_social_jump_videos(com_data, base_folder, graph_title, save_folder,
                 plt.axis('off')
                 writer.grab_frame()
 
-def generate_social_com_video(com_data, base_folder, graph_title, save_folder, cam='Camera1', num_frames=100):
+
+def generate_social_com_video(
+    com_data,
+    base_folder,
+    graph_title,
+    save_folder,
+    cam='Camera1',
+    start_frame=0,
+    num_frames=100,
+    flip_x=False
+):
     """
-    For each animal, render the first num_frames of COM overlaid on the video.
+    Render COM trajectories for all animals on one video,
+    starting at `start_frame` for both data and video.
     """
+    # load calibration & camera params
     calib = find_calib_file(base_folder)
     cams  = load_cameras(calib)
-    vid_p = os.path.join(base_folder, f'videos/{cam}/0.mp4')
-    reader= imageio.get_reader(vid_p)
-    meta  = dict(title='dannce_visualization', artist='Matplotlib')
+    K     = cams[cam]["K"]
+    Rdst  = np.squeeze(cams[cam]["RDistort"])
+    Tdst  = np.squeeze(cams[cam]["TDistort"])
+    r_vec = cams[cam]["r"]
+    t_vec = cams[cam]["t"]
+
+    # open video reader
+    vid_path = os.path.join(base_folder, f'videos/{cam}/0.mp4')
+    reader   = imageio.get_reader(vid_path)
+
+    # project COM into 2D once, for the requested slice
     n_animals = com_data.shape[2]
+    projs = []
+    for ai in range(n_animals):
+        # slice COM frames, then project
+        slice_3d = com_data[start_frame:start_frame+num_frames, :, ai]
+        uvw = project_to_2d(slice_3d, K, r_vec, t_vec)      # (num_frames, 3)
+        xy  = uvw[:, :2]                                   # (num_frames, 2)
+        distorted = distortPoints(xy, K, Rdst, Tdst)       # (num_frames, 2)
+        proj_i    = distorted.T.reshape(num_frames, -1, 2) # (num_frames, 1, 2)
+        projs.append(proj_i)
 
-    for i in range(n_animals):
-        pts = com_data[:num_frames, :, i]
-        proj = project_to_2d(pts, cams[cam]["K"], cams[cam]["r"], cams[cam]["t"])[:,:2]
-        proj = distortPoints(proj, cams[cam]["K"],
-                             np.squeeze(cams[cam]["RDistort"]),
-                             np.squeeze(cams[cam]["TDistort"]))
-        proj = proj.T.reshape(num_frames, -1, 2)
+    # prepare writer
+    metadata = dict(title='dannce_visualization', artist='Matplotlib')
+    out_name = f'vis_{graph_title}_combined_start{start_frame}.mp4'
+    out_path = os.path.join(save_folder, out_name)
+    writer   = FFMpegWriter(fps=30, metadata=metadata)
 
-        writer = FFMpegWriter(fps=30, metadata=meta)
-        fig    = plt.figure(figsize=(6,6))
-        out_v  = os.path.join(save_folder, f'vis_{graph_title}_continued_animal{i+1}.mp4')
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.axis('off')
 
-        with writer.saving(fig, out_v, dpi=300):
-            for f in range(num_frames):
-                plt.clf()
-                img  = reader.get_data(f)
-                kpts = proj[f]
-                plt.imshow(img)
-                plt.scatter(kpts[:,0], kpts[:,1], marker='.', alpha=0.5)
-                plt.axis('off')
-                writer.grab_frame()
+    with writer.saving(fig, out_path, dpi=300):
+        for idx in range(num_frames):
+            frame_idx = start_frame + idx
+            ax.clear()
+            frame = reader.get_data(frame_idx)
+            ax.imshow(frame)
+            h, w, _ = frame.shape
+
+            # overlay each animal
+            for ai, proj_i in enumerate(projs):
+                pts = proj_i[idx]  # shape (1,2)
+                if flip_x:
+                    pts = pts.copy()
+                    pts[:, 0] = w - pts[:, 0]
+                ax.scatter(
+                    pts[:, 0],
+                    pts[:, 1],
+                    s=20,
+                    alpha=0.8,
+                    label=f'Animal {ai+1}'
+                )
+
+            ax.legend(loc='upper right', fontsize='small')
+            writer.grab_frame()
+
+    plt.close(fig)
+    print(f"Saved combined COM video starting at frame {start_frame} → {out_path}")
+
+# below function will generate the videos separately, which is unnecessary for a smooth generation
+# def (com_data, base_folder, graph_title, save_folder, cam='Camera1', num_frames=100):
+#     """
+#     For each animal, render the first num_frames of COM overlaid on the video.
+#     """
+#     calib = find_calib_file(base_folder)
+#     cams  = load_cameras(calib)
+#     vid_p = os.path.join(base_folder, f'videos/{cam}/0.mp4')
+#     reader= imageio.get_reader(vid_p)
+#     meta  = dict(title='dannce_visualization', artist='Matplotlib')
+#     n_animals = com_data.shape[2]
+
+#     for i in range(n_animals):
+#         pts = com_data[:num_frames, :, i]
+#         proj = project_to_2d(pts, cams[cam]["K"], cams[cam]["r"], cams[cam]["t"])[:,:2]
+#         proj = distortPoints(proj, cams[cam]["K"],
+#                              np.squeeze(cams[cam]["RDistort"]),
+#                              np.squeeze(cams[cam]["TDistort"]))
+#         proj = proj.T.reshape(num_frames, -1, 2)
+
+#         writer = FFMpegWriter(fps=30, metadata=meta)
+#         fig    = plt.figure(figsize=(6,6))
+#         out_v  = os.path.join(save_folder, f'vis_{graph_title}_continued_animal{i+1}.mp4')
+
+#         with writer.saving(fig, out_v, dpi=300):
+#             for f in range(num_frames):
+#                 plt.clf()
+#                 img  = reader.get_data(f)
+#                 kpts = proj[f]
+#                 plt.imshow(img)
+#                 plt.scatter(kpts[:,0], kpts[:,1], marker='.', alpha=0.5)
+#                 plt.axis('off')
+#                 writer.grab_frame()
 
 # ——————————————————————————————————————————————————————————
 # Updated master function
@@ -257,6 +335,49 @@ def plot_com_all_social(
         if perform_generate_com_video:
             generate_social_com_video(com_data, base_folder, title, vis_folder)
 
+
+
+def standalone_generate_social_com_video(base_folder,
+    com_folder_name='COM/predict00',    cam='Camera1',
+    start_frame=100,
+    num_frames=150):
+    """
+    Detect single vs. multi-animal COM, reshape accordingly,
+    and run either the single-animal or social pipeline.
+    """
+    folder    = os.path.basename(os.path.normpath(base_folder))
+    title     = f'2COM_{folder}_{start_frame}_{num_frames}'
+    com_dir   = os.path.join(base_folder, com_folder_name)
+    com_mat   = os.path.join(com_dir, 'com3d0.mat')
+    if not os.path.exists(com_mat):
+        print(f"No COM file found for {base_folder}")
+        return
+
+    raw = load_com(com_mat)
+    print(f"plotting com_traga for {base_folder}")
+    # if your MAT stores shape (frames, 3, n_animals) already, just use it
+    if raw.ndim == 3 and raw.shape[1] == 3:
+        com_data = raw
+
+    # otherwise if it’s flattened (frames, 3*n_animals), reshape it
+    elif raw.ndim == 2 and raw.shape[1] % 3 == 0:
+        n_animals = raw.shape[1] // 3
+        com_data  = raw.reshape(-1, 3, n_animals)
+
+    else:
+        raise ValueError(f"Unexpected COM array shape {raw.shape}, " +
+                         "expected (frames,3) or (frames,3*n_animals) or (frames,3,n_animals)")
+
+    # now both branches yield com_data.shape == (frames, 3, n_animals)
+    n_animals = com_data.shape[2]
+
+
+    vis_folder = os.path.join(com_dir, 'vis')
+    os.makedirs(vis_folder, exist_ok=True)
+
+    generate_social_com_video(com_data, base_folder, title, vis_folder,    cam,
+    start_frame,
+    num_frames)
 #####################################################scom smooth, useless in the future#####################################
 
 

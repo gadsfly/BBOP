@@ -353,7 +353,7 @@ def plot_com_all(base_folder, com_folder_name='COM/predict00', perform_jump_indi
                 generate_jump_video(com_data, base_folder, jump_indices, graph_title, com_folder_save, cam='Camera1')
         
         if perform_generate_com_video:
-            generate_com_video(base_folder, graph_title, com_folder_save, cam='Camera1')
+            generate_com_video(com_data,base_folder, graph_title, com_folder_save, cam='Camera1') #(com_data, base_folder, graph_title, save_path, cam='Camera1'):
     else:
         print(f"no com file found for {base_folder}")
 
