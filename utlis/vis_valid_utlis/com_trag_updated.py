@@ -241,10 +241,10 @@ def generate_jump_video(com_data, base_folder, jump_indices, graph_title, save_p
             writer.grab_frame()
 
 
-def generate_com_video(com_data, base_folder, graph_title, save_path, cam='Camera1'):
+def generate_com_video(com_data, base_folder, graph_title, save_path, cam='Camera1',nf=100,sf=0):
     #######
-    N_FRAMES = 2
-    START_FRAME = 0
+    N_FRAMES = nf
+    START_FRAME = sf
     #######
     label3d_path = find_calib_file(base_folder)
     video_path = os.path.join(base_folder, f'videos/{cam}/0.mp4')
@@ -326,7 +326,7 @@ def generate_com_video(com_data, base_folder, graph_title, save_path, cam='Camer
             writer.grab_frame()
 
 
-def plot_com_all(base_folder, com_folder_name='COM/predict00', perform_jump_indices=False, perform_video_generation=False, perform_generate_com_video=False, zmin=-10, zmax=30):
+def plot_com_all(base_folder, com_folder_name='COM/predict00', perform_jump_indices=False, perform_video_generation=False, perform_generate_com_video=False, cam='Camera1', zmin=-10, zmax=30, nf=100,sf=0):
     # base_base_folder = os.path.dirname(os.path.normpath(base_folder))
     folder_name = os.path.basename(os.path.normpath(base_folder))
     graph_title = f'COM_{folder_name}' #240716weightsCOM_
@@ -350,10 +350,10 @@ def plot_com_all(base_folder, com_folder_name='COM/predict00', perform_jump_indi
                 # save_path = os.path.join(com_folder, 'vis')
                 # if not os.path.exists(save_path):
                 #     os.makedirs(save_path)
-                generate_jump_video(com_data, base_folder, jump_indices, graph_title, com_folder_save, cam='Camera1')
+                generate_jump_video(com_data, base_folder, jump_indices, graph_title, com_folder_save, cam)
         
         if perform_generate_com_video:
-            generate_com_video(com_data,base_folder, graph_title, com_folder_save, cam='Camera1') #(com_data, base_folder, graph_title, save_path, cam='Camera1'):
+            generate_com_video(com_data,base_folder, graph_title, com_folder_save, cam,nf,sf) #(com_data, base_folder, graph_title, save_path, cam='Camera1'):
     else:
         print(f"no com file found for {base_folder}")
 
