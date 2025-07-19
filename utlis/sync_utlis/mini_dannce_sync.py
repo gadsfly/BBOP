@@ -309,6 +309,7 @@ def load_sixcam_timestamps(rec_path, camera_number):
         raise FileNotFoundError(f"Frametimes file not found at {frametimes_path}")
 
 # works well below, just trying to add the social part, did not test though. also trying to add the com only option. anywyas below should sort of work well
+# no below did not work. apprently below would not take into consideration of shape or whatever. the xyz, xyc is somehow loaded as xx,yy,zz,which is wrong
 # def align_miniscope_to_sixcam(resultsss, mini_path, rec_path):
 #     # Extract required data
 #     sync_frame_mini = resultsss.get("sync_frame_mini")
