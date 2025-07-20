@@ -24,41 +24,88 @@ from utlis.scan_engine_utlis.scan_engine_utlis import (
     assign_status_codes,
 )
 
+
 def scan_folder(folder_name, base_folder, failed_paths, config, rec_files_to_scan):
+    """
+    Scan a single date-folder, process each rec subfolder listed in rec_files_to_scan,
+    and collect both calibration entries and per-rec status data.
+    """
     folder_path = os.path.join(base_folder, folder_name)
-    rec_files_data = []  # To store rec files and their status
-    calib_files = []  # To store calibration files
+    rec_files_data = []
+    calib_files = []
 
-    # Check for calibration files starting with 'calib'
-    for file_name in os.listdir(folder_path):
-        if file_name.startswith("calib"):
-            calib_files.append(file_name)
+    # Collect any entries starting with 'calib' at the date-folder level
+    for entry in os.listdir(folder_path):
+        if entry.lower().startswith("calib"):
+            calib_files.append(entry)
 
-    # Traverse subfolders within this folder
-    for subfolder_name in rec_files_to_scan:
-        subfolder_path = os.path.join(folder_path, subfolder_name)
+    # Process exactly the rec-folders passed in
+    for rec in rec_files_to_scan:
+        rec_path = os.path.join(folder_path, rec)
+        if not os.path.isdir(rec_path):
+            # skip anything that isn't actually a directory
+            continue
 
-        # Check for subfolders starting with a digit (rec folders)
-        if os.path.isdir(subfolder_path) and subfolder_name[0].isdigit():
-            # Find calibration file for each subfolder
-            calib_file = find_calib_file(subfolder_path)
+        # locate the calibration file for this rec (if any)
+        calib_file = find_calib_file(rec_path)
 
-            # Assign status codes dynamically based on the config
-            rec_file_data = assign_status_codes(
-                folder_name, subfolder_path, calib_file, failed_paths, config
-            )
+        # compute all status codes based on your config
+        rec_data = assign_status_codes(
+            folder_name,
+            rec_path,
+            calib_file,
+            failed_paths,
+            config
+        )
 
-            rec_file_data['rec_file'] = subfolder_name  # Add rec_file to the data
-            # Add date-time for update and some future
-            rec_file_data['scan_time'] = datetime.datetime.now().isoformat()
+        # annotate with rec name and current scan timestamp
+        rec_data['rec_file']  = rec
+        rec_data['scan_time'] = datetime.datetime.now().isoformat()
 
-            rec_files_data.append(rec_file_data)
+        rec_files_data.append(rec_data)
 
     return {
-        'date_folder': folder_name,
-        'calib_files': calib_files,  # Store the calibration files under date_folder level
-        'rec_files_data': rec_files_data  # Each rec file with its status fields
+        'date_folder':    folder_name,
+        'calib_files':    calib_files,
+        'rec_files_data': rec_files_data
     }
+
+# the origional version of scan folder that excluded things without starting as a digit which is a bit annoying wheeee
+# def scan_folder(folder_name, base_folder, failed_paths, config, rec_files_to_scan):
+#     folder_path = os.path.join(base_folder, folder_name)
+#     rec_files_data = []  # To store rec files and their status
+#     calib_files = []  # To store calibration files
+
+#     # Check for calibration files starting with 'calib'
+#     for file_name in os.listdir(folder_path):
+#         if file_name.startswith("calib"):
+#             calib_files.append(file_name)
+
+#     # Traverse subfolders within this folder
+#     for subfolder_name in rec_files_to_scan:
+#         subfolder_path = os.path.join(folder_path, subfolder_name)
+
+#         # Check for subfolders starting with a digit (rec folders)
+#         if os.path.isdir(subfolder_path) and subfolder_name[0].isdigit():
+#             # Find calibration file for each subfolder
+#             calib_file = find_calib_file(subfolder_path)
+
+#             # Assign status codes dynamically based on the config
+#             rec_file_data = assign_status_codes(
+#                 folder_name, subfolder_path, calib_file, failed_paths, config
+#             )
+
+#             rec_file_data['rec_file'] = subfolder_name  # Add rec_file to the data
+#             # Add date-time for update and some future
+#             rec_file_data['scan_time'] = datetime.datetime.now().isoformat()
+
+#             rec_files_data.append(rec_file_data)
+
+#     return {
+#         'date_folder': folder_name,
+#         'calib_files': calib_files,  # Store the calibration files under date_folder level
+#         'rec_files_data': rec_files_data  # Each rec file with its status fields
+#     }
 
 
 def log_folder_to_parquet_sep(base_folder, failed_paths_file, config, force_rescan_rec_files=None, rescan_threshold_days=7):
@@ -123,6 +170,7 @@ def log_folder_to_parquet_sep(base_folder, failed_paths_file, config, force_resc
             # Process and save each experiment's log separately
             for rec_file_data in folder_log['rec_files_data']:
                 rec_file = rec_file_data['rec_file']
+                # print(rec_file)
 
                 rec_file_data['rec_path'] = os.path.join(base_folder, date_folder, rec_file) #2504 some stipud person like myself finally decided it is a hassle to keep putting the same things together...
 

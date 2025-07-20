@@ -10,6 +10,7 @@ import utlis.connectivity as connectivity
 from utlis.projection import *
 import shutil
 
+
 def load_data(file_path):
     data = sio.loadmat(file_path)
     return data['com']

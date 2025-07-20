@@ -7,26 +7,39 @@ import pyarrow.parquet as pq
 import pyarrow.dataset as ds  # Import pyarrow.dataset at the top
 import pyarrow as pa
 # from datetime import datetime
+import glob
 
 
 def read_all_parquet_files(base_folder):
-    """
-    Efficiently read all Parquet files from the base folder using PyArrow's Dataset,
-    returning a PyArrow table with all columns.
-    
-    Parameters:
-    - base_folder (str): Path to the base folder containing Parquet files.
-    
-    Returns:
-    - table (pa.Table): Combined PyArrow table with all columns.
-    """
-    # Create a dataset from the base folder
-    dataset = ds.dataset(base_folder, format="parquet", exclude_invalid_files=True)
-    
-    # Read the entire dataset with all columns
+    # 1) Recursively gather every .parquet file under base_folder
+    parquet_paths = glob.glob(os.path.join(base_folder, "**", "*.parquet"), recursive=True)
+
+    # 2) Create a dataset from that explicit file list
+    dataset = ds.dataset(parquet_paths, format="parquet", exclude_invalid_files=True)
+
+    # 3) Read into a single Table
     table = dataset.to_table()
-    
     return table
+
+# below function may bug beacuse sometimes a non_parquet file will be read
+# def read_all_parquet_files(base_folder):
+#     """
+#     Efficiently read all Parquet files from the base folder using PyArrow's Dataset,
+#     returning a PyArrow table with all columns.
+    
+#     Parameters:
+#     - base_folder (str): Path to the base folder containing Parquet files.
+    
+#     Returns:
+#     - table (pa.Table): Combined PyArrow table with all columns.
+#     """
+#     # Create a dataset from the base folder
+#     dataset = ds.dataset(base_folder, format="parquet", exclude_invalid_files=True)
+    
+#     # Read the entire dataset with all columns
+#     table = dataset.to_table()
+    
+#     return table
 
 
 def read_all_parquet_files_auto_exclude(base_folder, exclude_columns=None):
