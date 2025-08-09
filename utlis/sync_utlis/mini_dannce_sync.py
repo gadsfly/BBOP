@@ -507,12 +507,14 @@ def align_miniscope_to_sixcam(resultsss, mini_path, rec_path, only_com=False):
     # Flatten COM
     n_animals = aligned_com.shape[2]
     com_flat = aligned_com.reshape(N, 3 * n_animals)
-    com_cols = [f'com{a+1}_{axis}' for a in range(n_animals) for axis in ('x','y','z')]
+    # com_cols = [f'com{a+1}_{axis}' for a in range(n_animals) for axis in ('x','y','z')]
+    com_cols = [f'com{a+1}_{axis}' for axis in ('x','y','z') for a in range(n_animals)]
 
     # Flatten predictions if requested
     if not only_com:
         aligned_pred = pred_3d[mapped_idx, :, :]  # (F,22,3)
         pred_flat = aligned_pred.reshape(N, 22 * 3)
+        # need to revise for multi animals later lol
         kp_cols = [f'kp{idx}_{coord}' for idx in range(1, 23) for coord in ('x','y','z')]
         data_matrix = np.hstack([com_flat, pred_flat])
         columns = com_cols + kp_cols
