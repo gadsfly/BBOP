@@ -378,6 +378,164 @@ def standalone_generate_social_com_video(base_folder,
     generate_social_com_video(com_data, base_folder, title, vis_folder,    cam,
     start_frame,
     num_frames)
+
+#################33 new functions for com distance comparison##########################
+
+import os
+import numpy as np
+import scipy.io as sio
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def com_distance_qc(
+    base_folder,
+    com_folder_name='COM/predict00',
+    prefer_filtered=False,#True,    # try vis/com_filtered_win*.npy first
+    win=None,                # choose a specific window size (int); if None pick the smallest available
+    jump_k=6.0,              # threshold = mean(|Δdist|) + k * std(|Δdist|)
+    first_n=None,            # only evaluate the first N frames if set
+    save_csv=True,
+    save_plot=True,
+    show_plot=False
+):
+    """
+    Quick QC of inter-animal distance.
+
+    Loads COM (prefers filtered .npy if available), computes dist(t) = ||A0(t)-A1(t)||,
+    flags 'jump' frames where |Δdist| exceeds mean + k*std, and writes a small CSV.
+
+    Returns
+    -------
+    out : dict with keys
+        'dist'         : np.ndarray [T]
+        'jump_frames'  : np.ndarray [M]   # frames where the jump is flagged (uses Δdist, so indices are +1)
+        'summary_df'   : pd.DataFrame(1 row)
+        'used_source'  : 'filtered_winXX' or 'raw'
+        'used_path'    : path to loaded array
+    """
+    com_dir   = os.path.join(base_folder, com_folder_name)
+    vis_dir   = os.path.join(com_dir, 'vis')
+    os.makedirs(vis_dir, exist_ok=True)
+
+    # ---- pick source: filtered npy or raw mat ----
+    used_source = 'raw'
+    used_path   = None
+    com = None
+
+    if prefer_filtered:
+        # list vis/com_filtered_win*.npy
+        if os.path.isdir(vis_dir):
+            def extract_w(fname):
+                # "com_filtered_win05.npy" -> 5
+                name = os.path.splitext(fname)[0]
+                if name.startswith('com_filtered_win'):
+                    return int(name.replace('com_filtered_win', ''))
+                return None
+            candidates = []
+            for fn in os.listdir(vis_dir):
+                if fn.startswith('com_filtered_win') and fn.endswith('.npy'):
+                    w = extract_w(fn)
+                    if w is not None:
+                        candidates.append((w, os.path.join(vis_dir, fn)))
+            if candidates:
+                if win is not None:
+                    # exact window requested
+                    matches = [p for (w,p) in candidates if w == int(win)]
+                    if matches:
+                        used_path = matches[0]
+                    else:
+                        # fall back to smallest if requested not found
+                        used_path = sorted(candidates, key=lambda t: t[0])[0][1]
+                else:
+                    used_path = sorted(candidates, key=lambda t: t[0])[0][1]  # smallest window
+                com = np.load(used_path)            # (T, 3, n_animals)
+                used_source = f'filtered_{os.path.basename(used_path)}'
+
+    if com is None:
+        # fall back to raw
+        mat_path = os.path.join(com_dir, 'com3d0.mat')
+        if not os.path.isfile(mat_path):
+            raise FileNotFoundError(f"No COM file found at {mat_path} and no filtered .npy in {vis_dir}")
+        data = sio.loadmat(mat_path)
+        if 'com' not in data:
+            raise KeyError(f"'com' key not in {mat_path}")
+        raw = data['com']
+        if raw.ndim == 3 and raw.shape[1] == 3:
+            com = raw
+        elif raw.ndim == 2 and raw.shape[1] % 3 == 0:
+            n_animals = raw.shape[1] // 3
+            com = raw.reshape(-1, 3, n_animals)
+        else:
+            raise ValueError(f"Unexpected COM shape {raw.shape}")
+        used_source = 'raw'
+        used_path   = mat_path
+
+    # ---- require at least 2 animals ----
+    if com.shape[2] < 2:
+        raise ValueError(f"Need >=2 animals; got shape {com.shape}")
+
+    # ---- optionally trim to first_n ----
+    if first_n is not None:
+        com = com[:first_n, :, :]
+
+    # ---- compute distances between animal 0 and 1 ----
+    a0 = com[:, :, 0]     # (T, 3)
+    a1 = com[:, :, 1]     # (T, 3)
+    dist = np.linalg.norm(a0 - a1, axis=1)  # (T,)
+
+    # ---- detect abrupt changes in the distance curve ----
+    d_dist = np.abs(np.diff(dist))          # (T-1,)
+    mu  = np.nanmean(d_dist)
+    sd  = np.nanstd(d_dist)
+    thr = mu + jump_k * sd
+    jump_idx = np.where(d_dist > thr)[0] + 1   # assign the jump to the *later* frame
+
+    # ---- small summary ----
+    summary = {
+        'source'      : [used_source],
+        'n_frames'    : [int(dist.size)],
+        'mean'        : [float(np.nanmean(dist))],
+        'median'      : [float(np.nanmedian(dist))],
+        'std'         : [float(np.nanstd(dist))],
+        'max'         : [float(np.nanmax(dist))],
+        'min'         : [float(np.nanmin(dist))],
+        'jump_k'      : [float(jump_k)],
+        'jump_thresh' : [float(thr)],
+        'n_jumps'     : [int(jump_idx.size)],
+    }
+    df = pd.DataFrame(summary)
+
+    # ---- save outputs ----
+    if save_csv:
+        df.to_csv(os.path.join(vis_dir, 'com_distance_qc_summary.csv'), index=False)
+        np.save(os.path.join(vis_dir, 'com_distance_qc_jump_frames.npy'), jump_idx)
+
+    if save_plot or show_plot:
+        plt.figure(figsize=(10,4))
+        plt.plot(np.arange(dist.size), dist, lw=1)
+        if jump_idx.size:
+            plt.scatter(jump_idx, dist[jump_idx], s=15)
+        plt.xlabel('Frame')
+        plt.ylabel('Distance (mm)')
+        plt.title('Inter-animal COM distance')
+        plt.tight_layout()
+        if save_plot:
+            plt.savefig(os.path.join(vis_dir, 'com_distance_qc_plot.png'), dpi=150)
+        if show_plot:
+            plt.show()
+        plt.close()
+
+    return {
+        'dist': dist,
+        'jump_frames': jump_idx,
+        'summary_df': df,
+        'used_source': used_source,
+        'used_path': used_path,
+    }
+
+
+
+
 #####################################################scom smooth, useless in the future#####################################
 
 
