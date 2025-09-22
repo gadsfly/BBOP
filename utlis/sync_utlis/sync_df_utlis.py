@@ -271,6 +271,7 @@ def is_video_valid(video_path):
 #         return
 
 
+# this process_sync works well, however, it is not getting the calib when there is a missing camera.
 def process_sync(base_folder, threshold=3, max_frames=100, min_frame=0):
     # note that base_folder means rec_folder, 
     # rec folder need to be jointed together before calling this function
