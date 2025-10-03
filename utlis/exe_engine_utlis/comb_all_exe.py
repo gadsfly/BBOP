@@ -11,59 +11,123 @@ from utlis.exe_engine_utlis.exe_single_utlis import rerun_with_prev_calib
 from concurrent.futures import ThreadPoolExecutor
 
 # Function to process each "unit" (rec_file) and update its status in the corresponding Parquet file
-def process_unit_and_update_status_mirgenparam(rec_file_data, base_folder):
+#below works great, however, did not allow flexibility of thanging the folder name of the calib
+# def process_unit_and_update_status_mirgenparam(rec_file_data, base_folder):
+#     date_folder = rec_file_data['date_folder']
+#     rec_file = rec_file_data['rec_file']
+    
+#     # Generate the paths needed for processing
+#     combined_path = os.path.join(base_folder, date_folder)
+#     calib_path = rec_file_data['calib_path'] if 'calib_path' in rec_file_data else os.path.join(combined_path, 'calib_before') #calib_before*
+#     calib_path = os.path.join(base_folder, date_folder, calib_path)
+#     if not calib_path:  # Check for empty or None calib_path
+#         print(f'No calib folder found. Aborting. {combined_path}/{rec_file}')
+#         return
+    
+#     output_file = f'{os.path.basename(date_folder)}_{rec_file}_{os.path.basename(calib_path)}_label3d_dannce.mat'
+
+#     # Call your processing function
+#     ssssta = mir_generate_param_z(combined_path, calib_path, rec_file, output_file)
+#     print("mir_generate_param ran successfully.")
+
+#     # After processing, update the status in the specific Parquet file
+#     parquet_file_path = os.path.join(base_folder, date_folder, rec_file, "folder_log.parquet")
+
+#     # Load the existing Parquet file
+#     try:
+#         table = pq.read_table(parquet_file_path)
+#         df = table.to_pandas()  # Convert to pandas for easier manipulation
+#     except FileNotFoundError:
+#         print(f"Parquet file not found at {parquet_file_path}")
+#         return
+
+#     if ssssta is True:
+#         # Update the status field (assuming 'sync' is the column)
+#         df['mir_generate_param'] = '1'  # Set status to '1' for processed
+
+#         # Add scan_time (or other updates)
+#         df['scan_time'] = datetime.datetime.now().isoformat()
+
+#         # Write the updated DataFrame back to the Parquet file
+#         updated_table = pa.Table.from_pandas(df)
+#         pq.write_table(updated_table, parquet_file_path)
+
+#         print(f"Updated Parquet file at {parquet_file_path} with new status.")
+#     else:
+#         print(f'processed failed. please check {combined_path}/{rec_file}')
+
+def process_unit_and_update_status_mirgenparam(
+    rec_file_data,
+    base_folder,
+    calib_folder_name: str = "calib_before"  # <-- now configurable
+):
     date_folder = rec_file_data['date_folder']
     rec_file = rec_file_data['rec_file']
-    
-    # Generate the paths needed for processing
+
+    # Base session path
     combined_path = os.path.join(base_folder, date_folder)
-    calib_path = rec_file_data['calib_path'] if 'calib_path' in rec_file_data else os.path.join(combined_path, 'calib_before') #calib_before*
-    calib_path = os.path.join(base_folder, date_folder, calib_path)
-    if not calib_path:  # Check for empty or None calib_path
+
+    # Resolve calibration path (priority: calib_folder_name > rec_file_data['calib_path'])
+    if calib_folder_name is not None and str(calib_folder_name).strip() != "":
+        calib_path = calib_folder_name
+        if not os.path.isabs(calib_path):
+            calib_path = os.path.join(combined_path, calib_path)
+    elif rec_file_data.get('calib_path'):
+        calib_path = rec_file_data['calib_path']
+        if not os.path.isabs(calib_path):
+            calib_path = os.path.join(combined_path, calib_path)
+    else:
+        calib_path = None  # will trigger your existing "No calib folder found" guard
+
+    # this works well, however, below does priorities the auto detected calib folders, which, is not suitable anymore when i am trying to do some stupid updates.........
+    # # Resolve calibration path:
+    # # - if rec_file_data provides 'calib_path', accept absolute or path relative to combined_path
+    # # - otherwise use the provided calib_folder_name under combined_path
+    # if rec_file_data.get('calib_path'):
+    #     calib_path = rec_file_data['calib_path']
+    #     if not os.path.isabs(calib_path):
+    #         calib_path = os.path.join(combined_path, calib_path)
+    # else:
+    #     calib_path = os.path.join(combined_path, calib_folder_name)
+
+    if not calib_path:
         print(f'No calib folder found. Aborting. {combined_path}/{rec_file}')
         return
-    
+
     output_file = f'{os.path.basename(date_folder)}_{rec_file}_{os.path.basename(calib_path)}_label3d_dannce.mat'
 
-    # Call your processing function
+    # Run processing
     ssssta = mir_generate_param_z(combined_path, calib_path, rec_file, output_file)
     print("mir_generate_param ran successfully.")
 
-    # After processing, update the status in the specific Parquet file
+    # Update status parquet
     parquet_file_path = os.path.join(base_folder, date_folder, rec_file, "folder_log.parquet")
-
-    # Load the existing Parquet file
     try:
         table = pq.read_table(parquet_file_path)
-        df = table.to_pandas()  # Convert to pandas for easier manipulation
+        df = table.to_pandas()
     except FileNotFoundError:
         print(f"Parquet file not found at {parquet_file_path}")
         return
 
     if ssssta is True:
-        # Update the status field (assuming 'sync' is the column)
-        df['mir_generate_param'] = '1'  # Set status to '1' for processed
-
-        # Add scan_time (or other updates)
+        df['mir_generate_param'] = '1'
         df['scan_time'] = datetime.datetime.now().isoformat()
-
-        # Write the updated DataFrame back to the Parquet file
         updated_table = pa.Table.from_pandas(df)
         pq.write_table(updated_table, parquet_file_path)
-
         print(f"Updated Parquet file at {parquet_file_path} with new status.")
     else:
         print(f'processed failed. please check {combined_path}/{rec_file}')
 
+
 # Function to handle sequential processing and status updates
-def sequential_process_and_update_mirgenparam(filtered_table, base_folder):
+def sequential_process_and_update_mirgenparam(filtered_table, base_folder, calib_folder_name):
     # Convert PyArrow table to pandas DataFrame
     filtered_df = filtered_table.to_pandas()
 
     # Process each row sequentially
     for row in filtered_df.itertuples(index=False):
         try:
-            process_unit_and_update_status_mirgenparam(row._asdict(), base_folder)
+            process_unit_and_update_status_mirgenparam(row._asdict(), base_folder, calib_folder_name)
         except Exception as e:
             print(f"Error in processing: {e}")
 
