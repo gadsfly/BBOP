@@ -280,143 +280,143 @@ def _boolean_runs(mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     return starts, ends
 
 #this is great, but it only counts until the threshold, i would like to include the things even smaller than threshold too.
-# def find_approach_success(
-#     frames: pd.DataFrame,
-#     contact_mm: float = 50.0,     # "touch" threshold
-#     dD_dt_thresh: float = 0.0,    # <= 0 means distance not increasing
-#     min_len: int = 10,            # min frames from start of closing to contact
-#     min_drop_mm: float = 10.0     # require at least this much net distance drop
-# ) -> Tuple[np.ndarray, List[Dict]]:
-#     """
-#     Returns:
-#       mask  : boolean array marking frames that belong to approach_success events
-#       events: list of dicts with indices and metrics for each event
-
-#     Uses only frames['dist_mm'] and frames['dD_dt'].
-#     """
-#     dist = frames["dist_mm"].to_numpy()
-#     closing = frames["dD_dt"].to_numpy() <= float(dD_dt_thresh)
-#     contact = dist <= float(contact_mm)
-
-#     s_close, e_close = _boolean_runs(closing)
-
-#     mask = np.zeros(len(frames), dtype=bool)
-#     events: List[Dict] = []
-
-#     for s, e in zip(s_close, e_close):
-#         # first contact inside this closing run (if any)
-#         within = np.flatnonzero(contact[s:e])
-#         if within.size == 0:
-#             continue
-#         k = s + int(within[0])  # first contact index
-
-#         # length and net drop checks
-#         length_ok = (k - s + 1) >= int(min_len)
-#         drop_ok   = (dist[s] - dist[k]) >= float(min_drop_mm)
-#         if not (length_ok and drop_ok):
-#             continue
-
-#         mask[s:k+1] = True
-#         events.append({
-#             "start_idx": int(s),
-#             "end_idx_exclusive": int(k + 1),
-#             "contact_idx": int(k),
-#             "start_dist_mm": float(dist[s]),
-#             "end_dist_mm": float(dist[k]),
-#             "drop_mm": float(dist[s] - dist[k]),
-#             "duration_frames": int(k - s + 1),
-#         })
-
-#     return mask, events
-
-
 def find_approach_success(
     frames: pd.DataFrame,
-    contact_mm: float = 50.0,        # threshold to define first contact
-    dD_dt_thresh: float = 0.0,       # closing if dD_dt <= this
-    min_len: int = 10,               # frames from run start to first contact
-    min_drop_mm: float = 10.0,       # net drop (start -> min before increase)
-    sep_consec: int = 2,             # require this many consecutive "increasing" frames
-    dD_dt_sep_thresh: float = 0.0    # "increasing" if dD_dt > this
+    contact_mm: float = 50.0,     # "touch" threshold
+    dD_dt_thresh: float = 0.0,    # <= 0 means distance not increasing
+    min_len: int = 10,            # min frames from start of closing to contact
+    min_drop_mm: float = 10.0     # require at least this much net distance drop
 ) -> Tuple[np.ndarray, List[Dict]]:
     """
-    Mark approach_success events that:
-      - start at the beginning of a closing run (dD_dt <= dD_dt_thresh),
-      - hit first contact (dist <= contact_mm),
-      - END at the first sustained increase of distance after contact
-        (dD_dt > dD_dt_sep_thresh for `sep_consec` consecutive frames).
-      - If no increase occurs inside the closing run, end at the run end.
-
     Returns:
-      mask   : boolean array for frames inside any event
-      events : list of dicts with indices and metrics
+      mask  : boolean array marking frames that belong to approach_success events
+      events: list of dicts with indices and metrics for each event
+
+    Uses only frames['dist_mm'] and frames['dD_dt'].
     """
     dist = frames["dist_mm"].to_numpy()
-    dD_dt = frames["dD_dt"].to_numpy()
-
-    closing = dD_dt <= float(dD_dt_thresh)
-    contact = dist   <= float(contact_mm)
-    increasing = dD_dt > float(dD_dt_sep_thresh)
+    closing = frames["dD_dt"].to_numpy() <= float(dD_dt_thresh)
+    contact = dist <= float(contact_mm)
 
     s_close, e_close = _boolean_runs(closing)
 
-    n = len(frames)
-    mask = np.zeros(n, dtype=bool)
+    mask = np.zeros(len(frames), dtype=bool)
     events: List[Dict] = []
 
     for s, e in zip(s_close, e_close):
-        # First contact within this closing run
+        # first contact inside this closing run (if any)
         within = np.flatnonzero(contact[s:e])
         if within.size == 0:
             continue
         k = s + int(within[0])  # first contact index
 
-        # Find first sustained increase after contact: sep_consec consecutive 'increasing'
-        r = e  # default to the end of this closing run
-        if k < e - 1:
-            # Build a rolling window of length sep_consec over 'increasing'
-            # We want the first index u in [k, e - sep_consec + 1) where all True
-            inc_seg = increasing[k:e].astype(np.uint8)
-            if sep_consec <= inc_seg.size:
-                # convolution to detect consecutive True of length sep_consec
-                window_sum = np.convolve(inc_seg, np.ones(sep_consec, dtype=np.uint8), mode="valid")
-                found = np.flatnonzero(window_sum == sep_consec)
-                if found.size > 0:
-                    u_rel = int(found[0])         # relative to k
-                    r = k + u_rel                 # event ends *at* the first increase
-        # Sanity guard
-        r = max(k + 1, min(r, e))  # ensure at least one frame after k and within [s,e]
-
-        # Checks
+        # length and net drop checks
         length_ok = (k - s + 1) >= int(min_len)
-        min_dist_segment = float(np.min(dist[s:r]))
-        drop_ok = (float(dist[s]) - min_dist_segment) >= float(min_drop_mm)
+        drop_ok   = (dist[s] - dist[k]) >= float(min_drop_mm)
         if not (length_ok and drop_ok):
             continue
 
-        # Mark and collect metrics
-        mask[s:r] = True
-        bottom_idx = int(s + int(np.argmin(dist[s:r])))
-
+        mask[s:k+1] = True
         events.append({
             "start_idx": int(s),
-            "end_idx_exclusive": int(r),
+            "end_idx_exclusive": int(k + 1),
             "contact_idx": int(k),
-            "bottom_idx": int(bottom_idx),
             "start_dist_mm": float(dist[s]),
-            "contact_dist_mm": float(dist[k]),
-            "min_dist_mm": float(min_dist_segment),
-            "end_dist_mm": float(dist[r-1]),
-            "drop_mm": float(dist[s] - min_dist_segment),
-            "duration_frames_to_contact": int(k - s + 1),
-            "duration_frames_total": int(r - s),
-            "increasing_guard": {
-                "sep_consec": int(sep_consec),
-                "dD_dt_sep_thresh": float(dD_dt_sep_thresh),
-            },
+            "end_dist_mm": float(dist[k]),
+            "drop_mm": float(dist[s] - dist[k]),
+            "duration_frames": int(k - s + 1),
         })
 
     return mask, events
+
+# this function will count too much. 
+# def find_approach_success(
+#     frames: pd.DataFrame,
+#     contact_mm: float = 50.0,        # threshold to define first contact
+#     dD_dt_thresh: float = 0.0,       # closing if dD_dt <= this
+#     min_len: int = 10,               # frames from run start to first contact
+#     min_drop_mm: float = 10.0,       # net drop (start -> min before increase)
+#     sep_consec: int = 2,             # require this many consecutive "increasing" frames
+#     dD_dt_sep_thresh: float = 0.0    # "increasing" if dD_dt > this
+# ) -> Tuple[np.ndarray, List[Dict]]:
+#     """
+#     Mark approach_success events that:
+#       - start at the beginning of a closing run (dD_dt <= dD_dt_thresh),
+#       - hit first contact (dist <= contact_mm),
+#       - END at the first sustained increase of distance after contact
+#         (dD_dt > dD_dt_sep_thresh for `sep_consec` consecutive frames).
+#       - If no increase occurs inside the closing run, end at the run end.
+
+#     Returns:
+#       mask   : boolean array for frames inside any event
+#       events : list of dicts with indices and metrics
+#     """
+#     dist = frames["dist_mm"].to_numpy()
+#     dD_dt = frames["dD_dt"].to_numpy()
+
+#     closing = dD_dt <= float(dD_dt_thresh)
+#     contact = dist   <= float(contact_mm)
+#     increasing = dD_dt > float(dD_dt_sep_thresh)
+
+#     s_close, e_close = _boolean_runs(closing)
+
+#     n = len(frames)
+#     mask = np.zeros(n, dtype=bool)
+#     events: List[Dict] = []
+
+#     for s, e in zip(s_close, e_close):
+#         # First contact within this closing run
+#         within = np.flatnonzero(contact[s:e])
+#         if within.size == 0:
+#             continue
+#         k = s + int(within[0])  # first contact index
+
+#         # Find first sustained increase after contact: sep_consec consecutive 'increasing'
+#         r = e  # default to the end of this closing run
+#         if k < e - 1:
+#             # Build a rolling window of length sep_consec over 'increasing'
+#             # We want the first index u in [k, e - sep_consec + 1) where all True
+#             inc_seg = increasing[k:e].astype(np.uint8)
+#             if sep_consec <= inc_seg.size:
+#                 # convolution to detect consecutive True of length sep_consec
+#                 window_sum = np.convolve(inc_seg, np.ones(sep_consec, dtype=np.uint8), mode="valid")
+#                 found = np.flatnonzero(window_sum == sep_consec)
+#                 if found.size > 0:
+#                     u_rel = int(found[0])         # relative to k
+#                     r = k + u_rel                 # event ends *at* the first increase
+#         # Sanity guard
+#         r = max(k + 1, min(r, e))  # ensure at least one frame after k and within [s,e]
+
+#         # Checks
+#         length_ok = (k - s + 1) >= int(min_len)
+#         min_dist_segment = float(np.min(dist[s:r]))
+#         drop_ok = (float(dist[s]) - min_dist_segment) >= float(min_drop_mm)
+#         if not (length_ok and drop_ok):
+#             continue
+
+#         # Mark and collect metrics
+#         mask[s:r] = True
+#         bottom_idx = int(s + int(np.argmin(dist[s:r])))
+
+#         events.append({
+#             "start_idx": int(s),
+#             "end_idx_exclusive": int(r),
+#             "contact_idx": int(k),
+#             "bottom_idx": int(bottom_idx),
+#             "start_dist_mm": float(dist[s]),
+#             "contact_dist_mm": float(dist[k]),
+#             "min_dist_mm": float(min_dist_segment),
+#             "end_dist_mm": float(dist[r-1]),
+#             "drop_mm": float(dist[s] - min_dist_segment),
+#             "duration_frames_to_contact": int(k - s + 1),
+#             "duration_frames_total": int(r - s),
+#             "increasing_guard": {
+#                 "sep_consec": int(sep_consec),
+#                 "dD_dt_sep_thresh": float(dD_dt_sep_thresh),
+#             },
+#         })
+
+#     return mask, events
 
 
 #####################################below is vis on point to point distances #####################################
@@ -554,3 +554,122 @@ def plot_skeleton_frames(
 
     plt.tight_layout()
     plt.show()
+
+
+
+
+def pick_alignment_cols(frames):
+    frame_col = None
+    for c in ("camera_frame_sixcam", "mapped_sixcam_frame_indices"):
+        if c in frames.columns:
+            frame_col = c
+            break
+    mini_ms_col = "timestamp_ms_mini" if "timestamp_ms_mini" in frames.columns else None
+    return frame_col, mini_ms_col
+
+
+def extract_incidents(frames, events, frame_col=None, mini_ms_col=None):
+    """
+    Turns events into simple per-event lists you can feed to other funcs.
+    Returns a list of dicts:
+      {"start_idx", "end_idx_exclusive", "index", "sixcam", "mini_ms"}
+    Missing cols are omitted.
+    """
+    out = []
+    for ev in events:
+        s, e = ev["start_idx"], ev["end_idx_exclusive"]
+        sl = slice(s, e)
+        item = {
+            "start_idx": s,
+            "end_idx_exclusive": e,
+            "index": frames.index[sl].tolist()
+        }
+        if frame_col:
+            item["sixcam"] = frames.iloc[sl][frame_col].astype(int).tolist()
+        if mini_ms_col:
+            item["mini_ms"] = frames.iloc[sl][mini_ms_col].astype(float).tolist()
+        out.append(item)
+    return out
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_dist_with_events(frames, mask, events, contact_mm=50.0, title=None):
+    dist = frames["dist_mm"].to_numpy()
+    x = frames.index
+
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+    ax.plot(x, dist, lw=1, label="dist_mm")
+    ax.scatter(x[mask], dist[mask], s=8, label="approach_success", zorder=3)
+    ax.axhline(contact_mm, ls="--", lw=1, label=f"contact={contact_mm} mm")
+
+    if events:
+        contact_idx = np.array([ev["contact_idx"] for ev in events], dtype=int)
+        ax.scatter(x[contact_idx], dist[contact_idx], marker="x", s=36, zorder=4, label="first contact")
+
+        # light spans per event (fast; number of events is small)
+        for ev in events:
+            s, e = ev["start_idx"], ev["end_idx_exclusive"]
+            ax.axvspan(x[s], x[e-1], alpha=0.15)
+
+    ax.set_ylabel("distance (mm)")
+    ax.set_xlabel("frame")  # or "time" if your index is time-like
+    ax.set_title(title or f"Approach-success events (n={len(events)})")
+    ax.legend(loc="best")
+    plt.tight_layout()
+    return fig, ax
+
+
+# def plot_single_event(frames, ev, contact_mm=50.0):
+#     s, e = ev["start_idx"], ev["end_idx_exclusive"]
+#     sl = slice(s, e)
+#     x = frames.index[sl]
+#     dist = frames["dist_mm"].iloc[sl]
+
+#     fig, ax = plt.subplots(figsize=(8, 3))
+#     ax.plot(x, dist, lw=1.2)
+#     ax.axhline(contact_mm, ls="--", lw=1)
+#     # mark first contact if ev has it
+#     if "contact_idx" in ev:
+#         cx = frames.index[ev["contact_idx"]]
+#         ax.scatter([cx], [frames["dist_mm"].iloc[ev["contact_idx"]]], marker="x", s=36, zorder=4)
+#     ax.set_ylabel("distance (mm)")
+#     ax.set_xlabel("frame")
+#     ax.set_title(f"Event [{s}:{e})  drop={ev.get('drop_mm', np.nan):.1f}mm")
+#     plt.tight_layout()
+#     return fig, ax
+
+def plot_single_event(frames, ev, contact_mm=50.0, mark="both"):
+    """
+    mark: "contact" | "bottom" | "both"
+    """
+    s, e = ev["start_idx"], ev["end_idx_exclusive"]
+    x = frames.index[s:e]
+    dist = frames["dist_mm"].iloc[s:e]
+
+    fig, ax = plt.subplots(figsize=(8, 3))
+    ax.plot(x, dist, lw=1.2, zorder=1)
+    ax.axhline(contact_mm, ls="--", lw=1, zorder=0)
+
+    # start/end verticals for context
+    ax.axvline(frames.index[s], ls=":", lw=1, alpha=0.6, zorder=0)
+    ax.axvline(frames.index[e-1], ls=":", lw=1, alpha=0.6, zorder=0)
+
+    if ("contact_idx" in ev) and (mark in {"contact", "both"}):
+        ci = ev["contact_idx"]
+        ax.scatter([frames.index[ci]], [frames["dist_mm"].iat[ci]],
+                   marker="x", s=40, zorder=3, label="first contact")
+
+    if ("bottom_idx" in ev) and (mark in {"bottom", "both"}):
+        bi = ev["bottom_idx"]
+        ax.scatter([frames.index[bi]], [frames["dist_mm"].iat[bi]],
+                   marker="o", s=36, zorder=4, label="bottom (min distance)")
+
+    ax.set_ylabel("distance (mm)")
+    ax.set_xlabel("frame")
+    ax.set_title(f"Event [{s}:{e})  drop={ev.get('drop_mm', float('nan')):.1f} mm")
+    ax.legend(loc="best", frameon=False)
+    fig.tight_layout()
+    return fig, ax
+
