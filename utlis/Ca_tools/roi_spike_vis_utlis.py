@@ -14,8 +14,10 @@ def load_minian_data(minian_path, timestamps_path):
     if not nc_files:
         raise FileNotFoundError("No .nc files found in the specified path.")
     data = xr.open_dataset(nc_files[0])
+    print(f"Loaded data from {nc_files[0]}")
     timestamps = pd.read_csv(timestamps_path)
     return data, timestamps['Time Stamp (ms)'].values
+
 
 def calculate_dff(data):
     """Calculate ΔF/F for calcium signals."""
