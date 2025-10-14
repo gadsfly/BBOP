@@ -59,7 +59,9 @@ from concurrent.futures import ThreadPoolExecutor
 def process_unit_and_update_status_mirgenparam(
     rec_file_data,
     base_folder,
-    calib_folder_name: str = "calib_before"  # <-- now configurable
+    calib_folder_name: str = "calib_before",  # <-- now configurable
+    out_folder = False, 
+    out_folder_name = "calib_newintrinsics"  # <-- now configurable
 ):
     date_folder = rec_file_data['date_folder']
     rec_file = rec_file_data['rec_file']
@@ -94,7 +96,10 @@ def process_unit_and_update_status_mirgenparam(
         print(f'No calib folder found. Aborting. {combined_path}/{rec_file}')
         return
 
-    output_file = f'{os.path.basename(date_folder)}_{rec_file}_{os.path.basename(calib_path)}_label3d_dannce.mat'
+    if out_folder is True:
+        output_file = f'{out_folder_name}/{os.path.basename(date_folder)}_{rec_file}_{os.path.basename(calib_path)}_label3d_dannce.mat'
+    else:
+        output_file = f'{os.path.basename(date_folder)}_{rec_file}_{os.path.basename(calib_path)}_label3d_dannce.mat'
 
     # Run processing
     ssssta = mir_generate_param_z(combined_path, calib_path, rec_file, output_file)
@@ -120,14 +125,14 @@ def process_unit_and_update_status_mirgenparam(
 
 
 # Function to handle sequential processing and status updates
-def sequential_process_and_update_mirgenparam(filtered_table, base_folder, calib_folder_name):
+def sequential_process_and_update_mirgenparam(filtered_table, base_folder, calib_folder_name, out_folder=False, out_folder_name="calib_newintrinsics"):
     # Convert PyArrow table to pandas DataFrame
     filtered_df = filtered_table.to_pandas()
 
     # Process each row sequentially
     for row in filtered_df.itertuples(index=False):
         try:
-            process_unit_and_update_status_mirgenparam(row._asdict(), base_folder, calib_folder_name)
+            process_unit_and_update_status_mirgenparam(row._asdict(), base_folder, calib_folder_name, out_folder, out_folder_name)
         except Exception as e:
             print(f"Error in processing: {e}")
 
