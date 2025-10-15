@@ -437,12 +437,13 @@ def plot_com_circle_for_path_social(
     ax.legend(loc='best', fontsize='small')
 
     # # save
-    # save_folder = os.path.join(base_path, vis_dir)
-    # os.makedirs(save_folder, exist_ok=True)
-    # if filename is None:
-    #     filename = 'com_circle.png'
-    # save_path = os.path.join(save_folder, filename)
-    # plt.tight_layout()
-    # plt.savefig(save_path, dpi=300)
-    # plt.close(fig)
-    # print(f"Saved COM circle plot to: {save_path}")
+    save_folder = os.path.join(base_path, vis_dir)
+    os.makedirs(save_folder, exist_ok=True)
+    if filename is None:
+        filename = 'com_circle.png'
+    save_path = os.path.join(save_folder, filename)
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.show()
+    plt.close(fig)
+    print(f"Saved COM circle plot to: {save_path}")
