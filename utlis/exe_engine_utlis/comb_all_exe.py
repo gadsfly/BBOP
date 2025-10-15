@@ -97,7 +97,12 @@ def process_unit_and_update_status_mirgenparam(
         return
 
     if out_folder is True:
+        
         output_file = f'{out_folder_name}/{os.path.basename(date_folder)}_{rec_file}_{os.path.basename(calib_path)}_label3d_dannce.mat'
+        output_full_path = os.path.join(combined_path, rec_file, output_file)
+    
+    # Create the directory if it doesn't exist
+        os.makedirs(os.path.dirname(output_full_path), exist_ok=True)
     else:
         output_file = f'{os.path.basename(date_folder)}_{rec_file}_{os.path.basename(calib_path)}_label3d_dannce.mat'
 
