@@ -25,7 +25,8 @@ def find_calib_file(base_folder):
 # /hpc/group/tdunn/Bryan_Rigs/BigOpenField/24summ/2024_06_26/1686940_left/DANNCE/predict_results/six_points_multi_test_0calib
 # /hpc/group/tdunn/lq53/dannce_chris_calib/240503rec_240229V1left/result_folder/train_newcom_70frames_100epo/DANNCE/predict_results
 ###############################################################################################################
-base_path =  "/data/big_rim/rsync_dcc_sum/25juneon/2025_06_25/20250407v1l23_socialclearcup"
+base_path =  "/data/big_rim/rsync_dcc_sum/lumi_novel_object_recog/lumi_novel_object_recog/2025_10_14/02mouse_base02"
+# "/data/big_rim/rsync_dcc_sum/25juneon/2025_06_25/20250407v1l23_socialclearcup"
 #'/hpc/group/tdunn/Bryan_Rigs/BigOpenField/Oct3V1/2024_11_13/20240910v1r_cricket_cyliner_test_16_17' #'/hpc/group/tdunn/Bryan_Rigs/BigOpenField/Oct3V1/2024_11_01/20240910V1r_BO_11_35' #'/hpc/group/tdunn/Bryan_Rigs/BigOpenField/Oct3V1/2024_11_13/20240910v1r_cricket_cyliner_test_16_17'
 cammm = 6
 video_path = os.path.join(base_path, f'videos/Camera{cammm}/0.mp4')
