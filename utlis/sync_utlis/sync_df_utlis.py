@@ -333,3 +333,4 @@ def process_sync(base_folder, threshold=3, max_frames=100, min_frame=0):
     except Exception as e:
         print(f"Error during alignment: {e}")
         return False
+    

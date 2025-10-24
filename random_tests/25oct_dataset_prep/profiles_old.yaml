@@ -1,0 +1,200 @@
+common_flags: &common_flags
+  include_videos: true
+  include_visuals: false
+  include_com: false          # <- new: COM is optional (off by default)
+
+common_includes: &common_includes
+  - "MIR_Aligned/frame_mapping.json"
+  - "MIR_Aligned/overlay*.png"
+  - "./df_*_label3d_dannce.mat"
+  # DANNCE 3D predictions (copied for all profiles; which predictXX kept is controlled by excludes below)
+  - "DANNCE/predict*/save_data_AVG.mat"
+  - "DANNCE/predict*/com3d_used*.mat"
+
+common_excludes: &common_excludes
+  - "**/vis/**"
+  - "MIR_Aligned/*.h5"
+  - "COM/**"
+
+common_id: &common_id
+  keep_mini_date: true
+  keep_partner_date: false
+  pair_sort: mini_first
+
+common_mini: &common_mini
+  attach_from_txt: true
+  hint_files: ["*.txt"]
+  dest_subdir: "MyV4Miniscope"
+  include: ["videos/**"]
+  exclude: [] #"**/cache/**", "**/trash/**"
+
+# rewrite rules let the exporter COPY matched sources into a fixed destination subdir,
+# preserving 'predictXX/...' tails so multiple runs don't collide.
+# common_rewrites: &common_rewrites
+#   - name: "dannce-to-standard"
+#     patterns:
+#       - "DANNCE/predict*/save_data_AVG.mat"
+#       - "DANNCE/predict*/predictions*.mat"
+#     dest_subdir: "DANNCE/" #"labels3d/dannce"   # result: <...>/<ID>_<HHMMSS>/labels3d/dannce/predictXX/...
+#     preserve_subpath: true           # keep 'predictXX/...'
+
+
+common_rewrites: &common_rewrites
+  - name: "dannce-to-standard"
+    patterns:
+      - "DANNCE/predict*/save_data_AVG.mat"
+      - "DANNCE/predict*/predictions*.mat"
+    dest_subdir: "labels3d/dannce"   # => .../labels3d/dannce/predictXX/...
+    preserve_subpath: true
+  - name: "mir-aligned-in-place"
+    patterns:
+      - "MIR_Aligned/frame_mapping.json"
+      - "MIR_Aligned/overlay*.png"
+    dest_subdir: "MIR_Aligned"       # => .../MIR_Aligned/frame_mapping.json, overlay*.png
+    preserve_subpath: false          # we’re already pointing inside MIR_Aligned/
+
+
+profiles:
+  paper-core:
+    flags: *common_flags
+    includes: *common_includes
+    excludes: *common_excludes
+    id: *common_id
+    mini: *common_mini
+    rewrites: *common_rewrites
+    conditions:
+      - when: "social == 1"
+        includes: []
+        excludes: []
+
+  paper-core_behav-only:
+    flags: *common_flags
+    includes: *common_includes
+    excludes: *common_excludes
+    id: *common_id
+    mini: *common_mini
+    rewrites: *common_rewrites
+    conditions:
+      - when: "social == 1"
+        includes: []
+        excludes: []
+
+  qc-review:
+    flags:
+      <<: *common_flags
+      include_videos: false
+      include_visuals: true
+    includes: *common_includes
+    excludes: []
+    id: *common_id
+    mini: *common_mini
+    rewrites: *common_rewrites
+
+  dannce-delta:
+    flags:
+      <<: *common_flags
+      include_videos: false
+      include_visuals: false
+    includes: *common_includes
+    excludes:
+      - "DANNCE/predict00/**"        # keep non-baseline runs only (e.g., predict01)
+    id: *common_id
+    mini: *common_mini
+    rewrites: *common_rewrites
+
+  repro-full:
+    flags:
+      include_videos: true
+      include_visuals: true
+      include_com: false             # stays optional here too (flip to true when needed)
+    includes: *common_includes
+    excludes: []
+    id: *common_id
+    mini: *common_mini
+    rewrites: *common_rewrites
+
+
+
+# profiles:
+#   paper-core:
+#     flags:
+#       include_videos: true
+#       include_visuals: false
+#     includes:
+#       - "MIR_Aligned/frame_mapping.json"
+#       - "MIR_Aligned/*.png"
+#       - "./df_*_label3d_dannce.mat"
+#     excludes:
+#       - "**/vis/**"
+#     conditions:
+#       - when: "social == 1"
+#         includes: [] #["MIR_Aligned/*with_ca*.h5"]
+#         excludes: []
+#     id:
+#       keep_mini_date: true        # <- keep the leading 8-digit date if present on the mini side
+#       keep_partner_date: false    # <- usually off; flip true if you want partner’s leading date too
+#       pair_sort: mini_first       # mini_first | alpha
+  
+#   paper-core_behav-only:
+#     flags:
+#       include_videos: true
+#       include_visuals: false
+#     includes:
+#       - "MIR_Aligned/frame_mapping.json"
+#       - "MIR_Aligned/*.png"
+#       - "./df_*_label3d_dannce.mat"
+#     excludes:
+#       - "**/vis/**"
+#     conditions:
+#       - when: "social == 1"
+#         includes: [] #["MIR_Aligned/*with_ca*.h5"]
+#         excludes: []
+#     id:
+#       keep_mini_date: true        # <- keep the leading 8-digit date if present on the mini side
+#       keep_partner_date: false    # <- usually off; flip true if you want partner’s leading date too
+#       pair_sort: mini_first       # mini_first | alpha
+
+#   qc-review:
+#     flags:
+#       include_videos: false     # light
+#       include_visuals: true     # see plots
+#     includes:
+#       - "MIR_Aligned/frame_mapping.json"
+#       - "MIR_Aligned/*.png"
+#       - "./df_*_label3d_dannce.mat"
+#       # - "COM/predict*/com3d*.mat"
+#     excludes: []
+#     id:
+#       keep_mini_date: true        # <- keep the leading 8-digit date if present on the mini side
+#       keep_partner_date: false    # <- usually off; flip true if you want partner’s leading date too
+#       pair_sort: mini_first       # mini_first | alpha
+
+#   dannce-delta:
+#     flags:
+#       include_videos: false
+#       include_visuals: false
+#     includes:
+#       - "MIR_Aligned/frame_mapping.json"
+#       - "MIR_Aligned/*.png"
+#       - "./df_*_label3d_dannce.mat"
+#       # - "DANNCE/predict01/save_data_AVG.mat"
+#     excludes:
+#       - "DANNCE/predict00/**"
+#     id:
+#       keep_mini_date: true        # <- keep the leading 8-digit date if present on the mini side
+#       keep_partner_date: false    # <- usually off; flip true if you want partner’s leading date too
+#       pair_sort: mini_first       # mini_first | alpha
+
+#   repro-full:
+#     flags:
+#       include_videos: true
+#       include_visuals: true
+#     includes:
+#       - "MIR_Aligned/frame_mapping.json"
+#       - "MIR_Aligned/*.png"
+#       - "./df_*_label3d_dannce.mat"
+#     excludes: []
+#     id:
+#       keep_mini_date: true        # <- keep the leading 8-digit date if present on the mini side
+#       keep_partner_date: false    # <- usually off; flip true if you want partner’s leading date too
+#       pair_sort: mini_first       # mini_first | alpha
