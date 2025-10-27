@@ -1,8 +1,199 @@
+# ---- simple social alias CSV flow -------------------------------------------
+# CSV schema we output & later reuse:
+# token,animal_key,area,short_id
+# - token: what we auto-detect from a session name (e.g., "20240809v1r1", "pmc13r1")
+# - animal_key: grouping key; if you want two tokens to be the same animal, give them the same animal_key
+# - area: MC or VC (we guess; you can fix)
+# - short_id: MC1/VC3... (left blank first run; we fill next run — or when you call build)
+
+import csv
 # export_profiles.py
 import os, re, csv, glob, fnmatch, shlex, subprocess, datetime as dt
 import pyarrow as pa
 import pyarrow.parquet as pq
 import yaml
+
+
+
+# --- stricter token extraction -----------------------------------------------
+# uses helpers you already have:
+#  - _session_dir_name, _split_path (paths), _session_split_pair (split by '_p')
+#    (these are already defined above in your file)  # e.g. :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
+_BAD_CHUNKS = {"2social","social","mini","miniscope","single","test","only","aligned",
+               "com","dannce","predict","vis","ao","bo","with","and"}
+
+def _pick_animalish_chunk(seg: str) -> str:
+    # pick first chunk with at least one letter and one digit, or starts with pmc/v1/le/re
+    for raw in (seg or "").split("_"):
+        c = raw.strip()
+        if not c or c.lower() in _BAD_CHUNKS or c.isdigit():
+            continue
+        if re.search(r"[A-Za-z]", c) and re.search(r"\d", c):
+            return c
+        if re.match(r"(?i)^(pmc|v1|le|re)", c):
+            return c
+    # fallback: first non-empty chunk
+    return (seg or "").split("_", 1)[0].strip()
+
+def _detect_pair_tokens(row):
+    session = _session_dir_name(_split_path(_to_str(row.get("rec_path"))))
+    left, right = _session_split_pair(session)    # already in your file  # :contentReference[oaicite:2]{index=2}
+    return _pick_animalish_chunk(left), _pick_animalish_chunk(right)
+
+
+
+def _guess_area(tok, row):
+    s = (tok or "").lower() + " " + _to_str(row.get("rec_path")).lower()
+    if "pmc" in s: return "MC"
+    if "v1"  in s: return "VC"
+    return "MC"  # default; you can edit later
+
+def write_social_animals_csv(filtered_table: pa.Table, out_csv: str, prev_csv: str=None):
+    """First pass: auto spit CSV of tokens we see in SOCIAL rows only."""
+    prev = {}
+    if prev_csv and os.path.exists(prev_csv):
+        with open(prev_csv, newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                prev[r["token"].lower()] = r
+
+    rows_out, seen = [], set()
+    for r in filtered_table.to_pylist():
+        if not _truthy(r.get("social")):        # only social
+            continue
+        a, b = _detect_pair_tokens(r)
+        for tok in (a, b):
+            if not tok: continue
+            key = tok.lower()
+            if key in seen: continue
+            seen.add(key)
+            old = prev.get(key, {})
+            rows_out.append({
+                "token": tok,
+                "animal_key": old.get("animal_key") or tok,          # default: itself
+                "area": old.get("area") or _guess_area(tok, r),       # guessed
+                "short_id": old.get("short_id") or "",                # assign later
+            })
+
+    rows_out.sort(key=lambda x: (x["area"], x["animal_key"], x["token"]))
+    _ensure_dir(os.path.dirname(out_csv) or ".")
+    with open(out_csv, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["token","animal_key","area","short_id"])
+        w.writeheader(); w.writerows(rows_out)
+    print(f"Wrote proposal CSV with {len(rows_out)} rows → {out_csv}")
+
+def _load_animals_csv(csv_path):
+    m_by_token = {}
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            m_by_token[r["token"].lower()] = {
+                "animal_key": r.get("animal_key") or r["token"],
+                "area": (r.get("area") or "MC").upper(),
+                "short_id": r.get("short_id") or "",
+            }
+    return m_by_token
+
+def _assign_missing_short_ids(m_by_token, update_csv_path=None):
+    """Fill empty short_id per animal_key & area with next MC#/VC#; optionally persist back."""
+    # collect per (area, animal_key)
+    by_key = {}
+    for tok, rec in m_by_token.items():
+        by_key.setdefault((rec["area"], rec["animal_key"]), []).append(tok)
+
+    # find used numbers per area
+    used = {"MC": set(), "VC": set()}
+    for rec in m_by_token.values():
+        sid = rec.get("short_id","")
+        if sid.startswith("MC"): 
+            n = sid[2:].isdigit() and int(sid[2:])
+            if n: used["MC"].add(n)
+        if sid.startswith("VC"):
+            n = sid[2:].isdigit() and int(sid[2:])
+            if n: used["VC"].add(n)
+
+    def _next(area):
+        n = 1
+        while n in used[area]: n += 1
+        used[area].add(n)
+        return f"{area}{n}"
+
+    # assign one short_id per (area, animal_key)
+    key2sid = {}
+    for (area, akey), toks in sorted(by_key.items()):
+        # if any token under this key already had a short_id, keep it
+        sid = None
+        for t in toks:
+            sid = sid or m_by_token[t]["short_id"]
+        if not sid:
+            sid = _next(area)
+        key2sid[(area, akey)] = sid
+        for t in toks:
+            m_by_token[t]["short_id"] = sid
+
+    # optionally persist
+    if update_csv_path:
+        # re-write rows ordered
+        rows = []
+        for tok, rec in m_by_token.items():
+            rows.append({"token": tok, "animal_key": rec["animal_key"], "area": rec["area"], "short_id": rec["short_id"]})
+        rows.sort(key=lambda x: (x["area"], x["animal_key"], x["token"]))
+        with open(update_csv_path, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=["token","animal_key","area","short_id"])
+            w.writeheader(); w.writerows(rows)
+        print(f"Updated short_id back to CSV → {update_csv_path}")
+    return m_by_token
+
+def build_export_plan_social_v2(filtered_table: pa.Table, animals_csv: str, profile: dict=None, update_csv=True):
+    """
+    Output dest paths like: social/<MCx+VCy>_sN/
+    No nested date/time; we keep originals only in the log metadata.
+    """
+    # load + ensure every animal_key has a short_id
+    m = _load_animals_csv(animals_csv)
+    m = _assign_missing_short_ids(m, update_csv_path=(animals_csv if update_csv else None))
+
+    plan, pair_counts = [], {}
+    rows = filtered_table.to_pylist()
+    for r in rows:
+        if not _truthy(r.get("social")):     # skip non-social for this v2
+            continue
+
+        ymd, hms = _extract_date_time(r)     # used only for stable ordering if needed
+        a_raw, b_raw = _detect_pair_tokens(r)
+        if not a_raw or not b_raw:
+            continue
+        a = m.get(a_raw.lower()); b = m.get(b_raw.lower())
+        if not a or not b:                    # token not in CSV yet
+            # you can re-run write_social_animals_csv to add the new tokens
+            continue
+
+        a_sid, b_sid = a["short_id"], b["short_id"]
+        pair = "+".join(sorted([a_sid, b_sid]))
+
+        # gather paths
+        base_paths = _base_paths_for_row(r)
+        final_globs, _ = _apply_profile_to_paths(r, base_paths, profile)
+
+        # assign s-index per pair (order by date/time appearance)
+        pair_counts.setdefault(pair, 0)
+        pair_counts[pair] += 1
+        s_idx = pair_counts[pair]
+
+        dest_rel = _join("social", f"{pair}_s{s_idx}")
+        plan.append({
+            "source_rec_path": _to_str(r.get("rec_path")),
+            "dest_rel_path": dest_rel,
+            "path_globs": final_globs,
+            "is_social": True,
+            "id": pair,
+            "ymd": ymd, "hms": hms,
+            "session_index": s_idx,
+            "orig_session_name": _session_dir_name(_split_path(_to_str(r.get("rec_path")))),
+            "tokens": f"{a_raw}+{b_raw}",
+        })
+    return plan
+
+
+
 
 # ---------------- basic utils ----------------
 

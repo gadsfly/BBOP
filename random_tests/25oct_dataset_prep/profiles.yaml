@@ -10,6 +10,9 @@ common_includes: &common_includes
   # DANNCE 3D predictions (copied for all profiles; which predictXX kept is controlled by excludes below)
   - "DANNCE/predict*/save_data_AVG.mat"
   - "DANNCE/predict*/com3d_used*.mat"
+  - "*.txt"
+  - "videos/**"
+  # - 
 
 common_excludes: &common_excludes
   - "**/vis/**"
