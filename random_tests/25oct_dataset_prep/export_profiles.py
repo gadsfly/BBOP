@@ -330,33 +330,37 @@ def export_with_rsync_preserve_tree(
                 mini_folder = os.path.join(mini_path, "My_V4_Miniscope")
                 nc_key = mini_mapping.get(mini_folder)
                 
+                # If no key in mapping, use default minian_dataset.nc
                 if nc_key:
                     nc_pattern = os.path.join(mini_folder, f"*{nc_key}*.nc")
-                    nc_files = glob.glob(nc_pattern)
+                else:
+                    nc_pattern = os.path.join(mini_folder, "minian_dataset.nc")
+                
+                nc_files = glob.glob(nc_pattern)
+                
+                if nc_files:
+                    dest_mini = os.path.join(dest, "miniscope")
+                    print(f"[MINI] {mini_folder} -> {dest_mini}")
                     
-                    if nc_files:
-                        dest_mini = os.path.join(dest, "miniscope") #My_V4_Miniscope
-                        print(f"[MINI] {mini_folder} -> {dest_mini}")
-                        
-                        if not dry_run:
-                            _ensure_dir(dest_mini)
-                        
-                        # Build rsync command with custom includes
-                        cmd = ["rsync", "-a"]
-                        if dry_run: cmd.append("-n")
-                        
-                        # Add all include patterns
-                        for pattern in mini_includes:
-                            cmd += ["--include", pattern]
-                        
-                        cmd += ["--exclude", "*", mini_folder + "/", dest_mini + "/"]
-                        _run(cmd, dry_run)
-                        
-                        # Copy the .nc file separately (since it's matched by key)
-                        cmd_nc = ["rsync", "-a"]
-                        if dry_run: cmd_nc.append("-n")
-                        cmd_nc += [nc_files[0], dest_mini + "/"]
-                        _run(cmd_nc, dry_run)
+                    if not dry_run:
+                        _ensure_dir(dest_mini)
+                    
+                    # Build rsync command with custom includes
+                    cmd = ["rsync", "-a"]
+                    if dry_run: cmd.append("-n")
+                    
+                    # Add all include patterns
+                    for pattern in mini_includes:
+                        cmd += ["--include", pattern]
+                    
+                    cmd += ["--exclude", "*", mini_folder + "/", dest_mini + "/"]
+                    _run(cmd, dry_run)
+                    
+                    # Copy the .nc file separately
+                    cmd_nc = ["rsync", "-a"]
+                    if dry_run: cmd_nc.append("-n")
+                    cmd_nc += [nc_files[0], dest_mini + "/"]
+                    _run(cmd_nc, dry_run)
         
         _post_copy_tidy(dest, dest_folder_name, dry_run)
         
