@@ -1,128 +1,56 @@
-common_flags: &common_flags
-  include_videos: true
-  include_visuals: false
-  include_com: false          # <- new: COM is optional (off by default)
-
-common_includes: &common_includes
-  - "MIR_Aligned/frame_mapping.json"
-  - "MIR_Aligned/overlay*.png"
-  - "./df_*_label3d_dannce.mat"
-  # DANNCE 3D predictions (copied for all profiles; which predictXX kept is controlled by excludes below)
-  - "DANNCE/predict*/save_data_AVG.mat"
-  - "DANNCE/predict*/com3d_used*.mat"
-  - "*.txt"
-  - "videos/**"
-  # - 
-
-common_excludes: &common_excludes
-  - "**/vis/**"
-  - "MIR_Aligned/*.h5"
-  - "COM/**"
-
-common_id: &common_id
-  keep_mini_date: true
-  keep_partner_date: false
-  pair_sort: mini_first
-
-common_mini: &common_mini
-  attach_from_txt: true
-  hint_files: ["*.txt"]
-  dest_subdir: "MyV4Miniscope"
-  include: ["videos/**"]
-  exclude: [] #"**/cache/**", "**/trash/**"
-
-# keep DANNCE/MIR placement as-is
-common_rewrites: &common_rewrites
-  - name: "dannce-to-standard"
-    patterns:
-      - "DANNCE/predict*/save_data_AVG.mat"
-      - "DANNCE/predict*/predictions*.mat"
-    dest_subdir: "labels3d/dannce"   # => .../labels3d/dannce/predictXX/...
-    preserve_subpath: true
-  - name: "mir-aligned-in-place"
-    patterns:
-      - "MIR_Aligned/frame_mapping.json"
-      - "MIR_Aligned/overlay*.png"
-    dest_subdir: "MIR_Aligned"       # => .../MIR_Aligned/frame_mapping.json, overlay*.png
-    preserve_subpath: false          # we’re already pointing inside MIR_Aligned/
-
-# ✨ NEW: versioned, YAML-controlled cleanup
-common_cleanup: &common_cleanup
-  enabled: true              # exporter should only clean when this is true
-  mode: trash                # none | trash | delete
-  trash_dir: ".trash"        # relative to export_root; exporter creates timestamped bucket inside
-  respect_dry_run: true      # on dry-run, only print planned moves
-  scope:                     # restrict cleanup to these areas under each session dest
-    - "MIR_Aligned/**"
-    - "labels3d/**"
-    - "DANNCE/**"
-    - "COM/**"
-    - "MyV4Miniscope/**"
-  protect:                   # never touch these during cleanup
-    - "videos/**"
-    - "metaData.json"
-    - "settings*.json"
+# =============================================================================
+# SIMPLE EXPORT CONFIG - Copy files preserving tree structure
+# =============================================================================
 
 profiles:
-  paper-core:
-    flags: *common_flags
-    includes: *common_includes
-    excludes: *common_excludes
-    id: *common_id
-    mini: *common_mini
-    rewrites: *common_rewrites
-    cleanup: *common_cleanup
-    conditions:
-      - when: "social == 1"
-        includes: []
-        excludes: []
+  default:
+    # Files to always copy
+    includes:
+      - "videos/**"
+      - "df_*_label3d_dannce.mat"
+      - "folder_log.parquet"
+      # Only for mini sessions (ignored if not present)
+      - "MIR_Aligned/frame_mapping.json"
+      # - "MIR_Aligned/overlay*.png"
+      # - "*.txt"
+      # DANNCE prediction placeholders - update as needed in future
+      # - "DANNCE/predict*/save_data_AVG.mat"
+      # - "DANNCE/predict*/com3d_used*.mat"
 
-  paper-core_behav-only:
-    flags: *common_flags
-    includes: *common_includes
-    excludes: *common_excludes
-    id: *common_id
-    mini: *common_mini
-    rewrites: *common_rewrites
-    cleanup: *common_cleanup
-    conditions:
-      - when: "social == 1"
-        includes: []
-        excludes: []
-
-  qc-review:
-    flags:
-      <<: *common_flags
-      include_videos: false
-      include_visuals: true
-    includes: *common_includes
-    excludes: []
-    id: *common_id
-    mini: *common_mini
-    rewrites: *common_rewrites
-    cleanup: *common_cleanup
-
-  dannce-delta:
-    flags:
-      <<: *common_flags
-      include_videos: false
-      include_visuals: false
-    includes: *common_includes
+    
+    # Files to skip
     excludes:
-      - "DANNCE/predict00/**"        # keep non-baseline runs only (e.g., predict01)
-    id: *common_id
-    mini: *common_mini
-    rewrites: *common_rewrites
-    cleanup: *common_cleanup
+      - "**/vis/**"
+      - "MIR_Aligned/*.h5"
+      - "COM/**"
+      - "prev_calib/**"
+      - "prev_intrinsic_calib/**"
 
-  repro-full:
-    flags:
-      include_videos: true
-      include_visuals: true
-      include_com: false             # stays optional here too (flip to true when needed)
-    includes: *common_includes
-    excludes: []
-    id: *common_id
-    mini: *common_mini
-    rewrites: *common_rewrites
-    cleanup: *common_cleanup
+    
+    # Miniscope video handling (uncomment when needed)
+    # mini:
+    #   dest_subdir: "MyV4Miniscope"
+    
+    # Cleanup: Remove old predictions before exporting new ones
+    cleanup:
+      enabled: true
+      mode: trash                    # Moves to .trash/ instead of deleting
+      trash_dir: ".trash"
+      respect_dry_run: true
+      
+      # What folders cleanup can touch (predictions/processing only)
+      scope:
+        - "**/metadata/*.png"
+        # - "**/DANNCE/**"
+        # - "*.txt"
+        # # - "**/*.txt"
+        # - "**/prev_intrinsic_calib/**"
+      
+      # What cleanup must NEVER touch (raw data is sacred)
+      protect:
+        - "videos/**"
+        - "df_*_label3d_dannce.mat"
+        # Only for mini sessions (protected even if present)
+        - "MIR_Aligned/frame_mapping.json"
+        - "MIR_Aligned/overlay*.png"
+        

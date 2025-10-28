@@ -690,3 +690,4 @@ def vis_param_all_with_mapping(csv_file_path, mapping_json_path, threshold=10, d
                 os.remove(temp_nc)
             except Exception as e:
                 print(f"Error removing temp file {temp_nc}: {e}")
+
