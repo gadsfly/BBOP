@@ -7,7 +7,7 @@ STATUS_FIELDS_CONFIG = {
     'mir_generate_param': {
         'default': 0,
         'conditions': [
-            {
+            { 
                 'condition': lambda **kwargs: kwargs['calib_file'] is not None,
                 'value': 1  # YES
             },
