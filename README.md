@@ -1,6 +1,7 @@
 # BBOP: Bryan Building Open Field Pipeline
 
-Behavioral analysis pipeline for multi-animal social experiments combining [s-DANNCE](https://github.com/spoonsso/dannce) 3D pose estimation with calcium imaging from miniscope recordings. Calcium imaging processing is customized from [MiniAn](https://github.com/denisecailab/minian).
+Behavioral analysis pipeline for multi-animal social experiments combining [s-DANNCE](https://github.com/tqxli/sdannce) 3D pose estimation with calcium imaging from miniscope recordings. Calcium imaging processing is customized from [MiniAn](https://github.com/denisecailab/minian).
+Calibration is done from [newsdannce](https://github.com/tdunnlab/newsdannce). Recording is handled by [campy](https://github.com/data-hound/campy).
 
 ## Installation
 
@@ -159,24 +160,24 @@ For additional help, please open an issue on GitHub.
 ## Key Contributors
 
 ### Prediction Pipeline (sDANNCE)
-Developed by **Tianqing Li** (repo link pending). BBOP manages command-level execution.
+Developed by **Tianqing Li** ([s-DANNCE](https://github.com/tqxli/sdannce)). BBOP manages command-level execution.
 
 ### Demo Data
 Provided through the surgical and recording work of **Dr. Renzhi Zhan** and **Mir Qi**.
 
 ### Calibration Pipeline
-Adapted from **Chris Axon** (repo link pending).
+Adapted from **Chris Axon** [newsdannce](https://github.com/tdunnlab/newsdannce).
 
 ### Hardware and Recording Improvements
-**Anshuman Sabath** revised the campy to enable recording (repo link pending), and contributed to arena design improvements, debugging, and technical advice.
+**Anshuman Sabath** revised the campy to enable recording [campy](https://github.com/data-hound/campy), and contributed to arena design improvements, debugging, and technical advice.
 
 ### Visualization and Validation Code
-Some components adapted from **Sihan Lyu** and **Sophie Shi** (repo link pending).
+Some components adapted from **Sihan Lyu** (https://github.com/Siwudi) and **Sophie Shi** (https://github.com/Sooophy/dannce/tree/stroke_analysis/trace_protocol).
 
 ## Advisory Support
 
 - **Repository Development:** Anshuman Sabath, Dr. Timothy W. Dunn
-- **Repository Presentation:** Tianqing Li, Dr. Timothy W. Dunn, Anshuman Sabath
+- **Repository Presentation, and data organizations:** Tianqing Li, Dr. Timothy W. Dunn, Anshuman Sabath
 
 ## Inspiration
 
