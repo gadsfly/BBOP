@@ -106,14 +106,13 @@ We use chuachoboard calibration for intrinsics and checkerboard calibration for 
 
 Calibration protocol and tools can be found in the recording protocol documentation.
 
-Note: `label3d_dannce.mat` contains the calibration parameters for all cameras in DANNCE-compatible format.
+Note: `*label3d_dannce.mat` contains the calibration parameters for all cameras in DANNCE-compatible format.
+
+view details in: **Protocol of Recording** [View PDF](https://drive.google.com/file/d/1_cB2Yxkpt41zbyjxM-VQth-bNA1zPu_v/view?usp=sharing)  
 
 ## Synchronization
 
-For multi-camera recordings, frame synchronization is critical. BBOP expects:
-- Hardware-triggered cameras 
-- Frame timestamps from each camera stored in `Camera*/frametimes.mat`
-- light switrched for sync
+For multi-camera recordings, frame synchronization is critical. BBOP expects light switrched for sync, follow the steps in teh recording protocol. [View PDF](https://drive.google.com/file/d/1_cB2Yxkpt41zbyjxM-VQth-bNA1zPu_v/view?usp=sharing)
 
 Synchronization with miniscope recordings is handled in a similar way.
 
@@ -136,26 +135,10 @@ See [demo/3d_keypoint_social_analysis.ipynb](demo/3d_keypoint_social_analysis.ip
 - Social interaction detection
 - Neural activity correlation
 
+## Preprocessing Methods
+**Protocol:** [View PDF](https://drive.google.com/file/d/1_cB2Yxkpt41zbyjxM-VQth-bNA1zPu_v/view?usp=sharing)  
 
-## Requirements
 
-- Python ≥ 3.9 
-- CUDA-capable GPU (recommended for s-DANNCE) (?)
-- ~5(?)GB disk space for demo data
-
-Core dependencies are installed automatically via pip. See [pyproject.toml](pyproject.toml) for complete list.
-
-## Citation
-
-If you use BBOP in your research, please cite:
-
-```
-[placeholder]
-```
-
-BBOP builds upon:
-- **s-DANNCE**: ... et al. (2021) [cite s-DANNCE paper]
-- **MiniAn**: Dong et al. (2022) [cite MiniAn paper]
 
 ## License
 
