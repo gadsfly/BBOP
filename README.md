@@ -183,3 +183,4 @@ Advising on repo development: Anshuman Sabath, Dr. Timothy W. Dunn
 Advising on repo presentation: Tianqing Li, Dr. Timothy W. Dunn, Anshuman Sabath
 
 Concept inspiration: Jim Roach's pipeline for STUDIO.
+sDANNCE approaching behavior function inspired by: Minji Jang
