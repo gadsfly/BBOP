@@ -29,7 +29,7 @@ Raw Videos → Generate Caliberation files → sync 6 cameras → COM Tracking �
 
 **Run the complete pipeline tutorial:**
 ```bash
-jupyter notebook tutorial_full_pipeline.ipynb
+jupyter demo/bbop_preprocess_demo.ipynb
 ```
 
 The tutorial walks through the complete pipeline from raw videos to analysis-ready data.
