@@ -35,11 +35,10 @@ jupyter notebook tutorial_full_pipeline.ipynb
 The tutorial walks through the complete pipeline from raw videos to analysis-ready data.
 
 **Tutorials included:**
-- `tutorial_full_pipeline.ipynb` - Complete pipeline (calibration → pose → sync)
-- `tutorial_miniscope_processing.ipynb` - Miniscope analysis with MiniAn
-- `tutorial_data_loading_analysis.ipynb` - Load merged data and analyze
+- `demo/bbop_preprocess_demo.ipynb` - Complete pipeline (calibration → pose → sync) [To-Do: sync is not yet added... should do sometime later...]
+- `tutorial_miniscope_processing.ipynb` - Miniscope analysis with MiniAn [coming soon]
+- `demo/3d_keypoint_social_analysis.ipynb` - Load merged data and analyze, this demo is with social animals (2 mice) and miniscope analyzed data
 
-Expected runtime: 15-20 minutes for main pipeline
 
 The Main demonstrates:
 1. Folder scanning and status tracking
@@ -51,7 +50,6 @@ The Main demonstrates:
 7. Miniscope-camera synchronization (produces frame_mapping.json)
 8. Loading merged data for analysis (separate tutorial)
 
-Expected runtime: 15-20 minutes
 
 
 See [demo/bbop_preprocess_demo.ipynb](demo/bbop_preprocess_demo.ipynb) for complete workflow.
