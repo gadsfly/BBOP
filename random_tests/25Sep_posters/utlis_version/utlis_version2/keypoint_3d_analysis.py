@@ -2264,36 +2264,31 @@ def _vertical_sep_mm(merged: pd.DataFrame):
         return dz, "Snout z"
     return np.full(len(merged), np.nan, dtype=float), "z unavailable"
 
-def _head_pitch_deg(merged: pd.DataFrame):
+def _pitch_yaw_deg(df, animal="a1"):
     """
-    Head pitch (deg) per animal from SpineF(#4)→Snout(#3) vector.
-    Returns dict with keys: 'a1','a2','mean_abs'. NaN if 3D missing.
+    Head orientation from a simple head axis: SpineF (#4) → Snout (#3).
+    Pitch: angle of that axis vs horizontal plane (deg).
+    Yaw: angle of XY projection (deg).
     """
-    need = [
-        "kp3_x_a1","kp3_y_a1","kp3_z_a1","kp4_x_a1","kp4_y_a1","kp4_z_a1",
-        "kp3_x_a2","kp3_y_a2","kp3_z_a2","kp4_x_a2","kp4_y_a2","kp4_z_a2",
-    ]
-    have3d = all(c in merged.columns for c in need)
-    if not have3d:
-        n = len(merged)
-        nan = np.full(n, np.nan, dtype=float)
-        return {"a1": nan, "a2": nan, "mean_abs": nan}
+    n = len(df)
+    need = [f"kp4_x_{animal}", f"kp4_y_{animal}", f"kp4_z_{animal}",
+            f"kp3_x_{animal}", f"kp3_y_{animal}", f"kp3_z_{animal}"]
+    if not all(c in df.columns for c in need):
+        return np.full(n, np.nan), np.full(n, np.nan)
 
-    def _pitch(x3,y3,z3,x4,y4,z4):
-        dx = x3 - x4; dy = y3 - y4; dz = z3 - z4
-        horiz = np.sqrt(dx*dx + dy*dy)
-        return np.degrees(np.arctan2(dz, horiz))
+    x4 = df[f"kp4_x_{animal}"].to_numpy(float)
+    y4 = df[f"kp4_y_{animal}"].to_numpy(float)
+    z4 = df[f"kp4_z_{animal}"].to_numpy(float)
+    x3 = df[f"kp3_x_{animal}"].to_numpy(float)
+    y3 = df[f"kp3_y_{animal}"].to_numpy(float)
+    z3 = df[f"kp3_z_{animal}"].to_numpy(float)
 
-    a1 = _pitch(
-        merged["kp3_x_a1"].to_numpy(float), merged["kp3_y_a1"].to_numpy(float), merged["kp3_z_a1"].to_numpy(float),
-        merged["kp4_x_a1"].to_numpy(float), merged["kp4_y_a1"].to_numpy(float), merged["kp4_z_a1"].to_numpy(float),
-    )
-    a2 = _pitch(
-        merged["kp3_x_a2"].to_numpy(float), merged["kp3_y_a2"].to_numpy(float), merged["kp3_z_a2"].to_numpy(float),
-        merged["kp4_x_a2"].to_numpy(float), merged["kp4_y_a2"].to_numpy(float), merged["kp4_z_a2"].to_numpy(float),
-    )
-    mean_abs = 0.5*(np.abs(a1) + np.abs(a2))
-    return {"a1": a1, "a2": a2, "mean_abs": mean_abs}
+    vx, vy, vz = (x3 - x4), (y3 - y4), (z3 - z4)           # SpineF→Snout
+    hyp = np.hypot(vx, vy)
+    pitch = np.degrees(np.arctan2(vz, hyp))                # +up/-down
+    yaw   = np.degrees(np.arctan2(vy, vx))                 # global XY
+    return pitch, yaw
+
 
 def plot_incident_windows_3d_advantage(
     merged: pd.DataFrame,
