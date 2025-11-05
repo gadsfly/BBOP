@@ -1,6 +1,7 @@
 # BBOP: Bryan Building Open Field Pipeline
 
-Behavioral analysis pipeline for multi-animal social experiments combining [s-DANNCE](https://github.com/spoonsso/dannce) 3D pose estimation with calcium imaging from miniscope recordings. Calcium imaging processing is customized from [MiniAn](https://github.com/denisecailab/minian).
+Behavioral analysis pipeline for multi-animal social experiments combining [s-DANNCE](https://github.com/tqxli/sdannce) 3D pose estimation with calcium imaging from miniscope recordings. Calcium imaging processing is customized from [MiniAn](https://github.com/denisecailab/minian).
+Calibration is done from [newsdannce](https://github.com/tdunnlab/newsdannce). Recording is handled by [campy](https://github.com/data-hound/campy).
 
 ## Installation
 
@@ -29,17 +30,16 @@ Raw Videos → Generate Caliberation files → sync 6 cameras → COM Tracking �
 
 **Run the complete pipeline tutorial:**
 ```bash
-jupyter notebook tutorial_full_pipeline.ipynb
+jupyter demo/bbop_preprocess_demo.ipynb
 ```
 
 The tutorial walks through the complete pipeline from raw videos to analysis-ready data.
 
 **Tutorials included:**
-- `tutorial_full_pipeline.ipynb` - Complete pipeline (calibration → pose → sync)
-- `tutorial_miniscope_processing.ipynb` - Miniscope analysis with MiniAn
-- `tutorial_data_loading_analysis.ipynb` - Load merged data and analyze
+- `demo/bbop_preprocess_demo.ipynb` - Complete pipeline (calibration → pose → sync) [To-Do: sync is not yet added... should do sometime later...]
+- `tutorial_miniscope_processing.ipynb` - Miniscope analysis with MiniAn [coming soon]
+- `demo/3d_keypoint_social_analysis.ipynb` - Load merged data and analyze, this demo is with social animals (2 mice) and miniscope analyzed data
 
-Expected runtime: 15-20 minutes for main pipeline
 
 The Main demonstrates:
 1. Folder scanning and status tracking
@@ -51,7 +51,6 @@ The Main demonstrates:
 7. Miniscope-camera synchronization (produces frame_mapping.json)
 8. Loading merged data for analysis (separate tutorial)
 
-Expected runtime: 15-20 minutes
 
 
 See [demo/bbop_preprocess_demo.ipynb](demo/bbop_preprocess_demo.ipynb) for complete workflow.
@@ -108,14 +107,13 @@ We use chuachoboard calibration for intrinsics and checkerboard calibration for 
 
 Calibration protocol and tools can be found in the recording protocol documentation.
 
-Note: `label3d_dannce.mat` contains the calibration parameters for all cameras in DANNCE-compatible format.
+Note: `*label3d_dannce.mat` contains the calibration parameters for all cameras in DANNCE-compatible format.
+
+view details in: **Protocol of Recording** [View PDF](https://drive.google.com/file/d/1_cB2Yxkpt41zbyjxM-VQth-bNA1zPu_v/view?usp=sharing)  
 
 ## Synchronization
 
-For multi-camera recordings, frame synchronization is critical. BBOP expects:
-- Hardware-triggered cameras 
-- Frame timestamps from each camera stored in `Camera*/frametimes.mat`
-- light switrched for sync
+For multi-camera recordings, frame synchronization is critical. BBOP expects light switrched for sync, follow the steps in teh recording protocol. [View PDF](https://drive.google.com/file/d/1_cB2Yxkpt41zbyjxM-VQth-bNA1zPu_v/view?usp=sharing)
 
 Synchronization with miniscope recordings is handled in a similar way.
 
@@ -138,26 +136,10 @@ See [demo/3d_keypoint_social_analysis.ipynb](demo/3d_keypoint_social_analysis.ip
 - Social interaction detection
 - Neural activity correlation
 
+## Preprocessing Methods
+**Protocol:** [View PDF](https://drive.google.com/file/d/1_cB2Yxkpt41zbyjxM-VQth-bNA1zPu_v/view?usp=sharing)  
 
-## Requirements
 
-- Python ≥ 3.9 
-- CUDA-capable GPU (recommended for s-DANNCE) (?)
-- ~5(?)GB disk space for demo data
-
-Core dependencies are installed automatically via pip. See [pyproject.toml](pyproject.toml) for complete list.
-
-## Citation
-
-If you use BBOP in your research, please cite:
-
-```
-[placeholder]
-```
-
-BBOP builds upon:
-- **s-DANNCE**: ... et al. (2021) [cite s-DANNCE paper]
-- **MiniAn**: Dong et al. (2022) [cite MiniAn paper]
 
 ## License
 
@@ -169,19 +151,35 @@ For additional help, please open an issue on GitHub.
 
 
 ## Credits & Acknowledgments
-Core development: BBOP was developed by Mir Qi as part of a project funded and directed by Dr. Timothy W. Dunn.
+# Acknowledgments
 
-Prediction pipeline (sDANNCE): Developed by Tianqing Li (repo link pending). BBOP manages command-level execution.
+## Core Development
 
-Demo data: Provided through the surgical work of Dr. Renzhi Zhan and recording work of Dr. Renzhi Zhan and Mir Qi.
+**BBOP** was developed by **Mir Qi** as part of a project funded and directed by **Dr. Timothy W. Dunn**.
 
-Calibration pipeline: Adapted from Chris Axon (repo link pending).
+## Key Contributors
 
-Hardware and recording improvements: Anshuman Sabath revised the campy, enabling recording (repo link pending), and contributed to arena design improvements, debugging, and advice.
+### Prediction Pipeline (sDANNCE)
+Developed by **Tianqing Li** ([s-DANNCE](https://github.com/tqxli/sdannce)). BBOP manages command-level execution.
 
-Visualization and validation code: Some adapted from Sihan Lyu and Sophie Shi (repo link pending).
+### Demo Data
+Provided through the surgical and recording work of **Dr. Renzhi Zhan** and **Mir Qi**.
 
-Advising on repo development: Anshuman Sabath, Dr. Timothy W. Dunn  
-Advising on repo presentation: Tianqing Li, Dr. Timothy W. Dunn, Anshuman Sabath
+### Calibration Pipeline
+Adapted from **Chris Axon** [newsdannce](https://github.com/tdunnlab/newsdannce).
 
-Concept inspiration: Jim Roach's pipeline for STUDIO.
+### Hardware and Recording Improvements
+**Anshuman Sabath** revised the campy to enable recording [campy](https://github.com/data-hound/campy), and contributed to arena design improvements, debugging, and technical advice.
+
+### Visualization and Validation Code
+Some components adapted from **Sihan Lyu** (https://github.com/Siwudi) and **Sophie Shi** (https://github.com/Sooophy/dannce/tree/stroke_analysis/trace_protocol).
+
+## Advisory Support
+
+- **Repository Development:** Anshuman Sabath, Dr. Timothy W. Dunn
+- **Repository Presentation, and data organizations:** Tianqing Li, Dr. Timothy W. Dunn, Anshuman Sabath
+
+## Inspiration
+
+- **Concept Inspiration:** Jim Roach's pipeline for STUDIO
+- **sDANNCE Approaching Behavior Function:** Minji Jang
