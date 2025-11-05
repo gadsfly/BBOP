@@ -54,7 +54,7 @@ The Main demonstrates:
 Expected runtime: 15-20 minutes
 
 
-See [examples/pipeline_execution.ipynb](examples/pipeline_execution.ipynb) for complete workflow.
+See [demo/bbop_preprocess_demo.ipynb](demo/bbop_preprocess_demo.ipynb) for complete workflow.
 
 ## Data Structure (after processing and clean up)
 
@@ -133,7 +133,7 @@ data = merge_pred_with_miniscope(
 )
 ```
 
-See [examples/3d_keypoint_analysis.ipynb](examples/3d_keypoint_analysis.ipynb) for analysis workflows including:
+See [demo/3d_keypoint_social_analysis.ipynb](demo/3d_keypoint_social_analysis.ipynb) for analysis workflows including:
 - 3D trajectory analysis
 - Social interaction detection
 - Neural activity correlation
