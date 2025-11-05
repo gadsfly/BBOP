@@ -167,20 +167,35 @@ For additional help, please open an issue on GitHub.
 
 
 ## Credits & Acknowledgments
-Core development: BBOP was developed by Mir Qi as part of a project funded and directed by Dr. Timothy W. Dunn.
+# Acknowledgments
 
-Prediction pipeline (sDANNCE): Developed by Tianqing Li (repo link pending). BBOP manages command-level execution.
+## Core Development
 
-Demo data: Provided through the surgical work of Dr. Renzhi Zhan and recording work of Dr. Renzhi Zhan and Mir Qi.
+**BBOP** was developed by **Mir Qi** as part of a project funded and directed by **Dr. Timothy W. Dunn**.
 
-Calibration pipeline: Adapted from Chris Axon (repo link pending).
+## Key Contributors
 
-Hardware and recording improvements: Anshuman Sabath revised the campy, enabling recording (repo link pending), and contributed to arena design improvements, debugging, and advice.
+### Prediction Pipeline (sDANNCE)
+Developed by **Tianqing Li** (repo link pending). BBOP manages command-level execution.
 
-Visualization and validation code: Some adapted from Sihan Lyu and Sophie Shi (repo link pending).
+### Demo Data
+Provided through the surgical and recording work of **Dr. Renzhi Zhan** and **Mir Qi**.
 
-Advising on repo development: Anshuman Sabath, Dr. Timothy W. Dunn  
-Advising on repo presentation: Tianqing Li, Dr. Timothy W. Dunn, Anshuman Sabath
+### Calibration Pipeline
+Adapted from **Chris Axon** (repo link pending).
 
-Concept inspiration: Jim Roach's pipeline for STUDIO.
-sDANNCE approaching behavior function inspired by: Minji Jang
+### Hardware and Recording Improvements
+**Anshuman Sabath** revised the campy to enable recording (repo link pending), and contributed to arena design improvements, debugging, and technical advice.
+
+### Visualization and Validation Code
+Some components adapted from **Sihan Lyu** and **Sophie Shi** (repo link pending).
+
+## Advisory Support
+
+- **Repository Development:** Anshuman Sabath, Dr. Timothy W. Dunn
+- **Repository Presentation:** Tianqing Li, Dr. Timothy W. Dunn, Anshuman Sabath
+
+## Inspiration
+
+- **Concept Inspiration:** Jim Roach's pipeline for STUDIO
+- **sDANNCE Approaching Behavior Function:** Minji Jang
