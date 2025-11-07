@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bbop"
+version = "0.1.0"
+description = "Behavioral analysis tools for Big Open Field in Bryan Building."
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.26.0",
+    "pandas>=2.2.0",
+    "scipy>=1.13.0",
+    "scikit-learn>=1.6.0",
+    "scikit-image>=0.24.0",
+    "matplotlib>=3.9.0",
+    "seaborn>=0.13.0",
+    "opencv-python>=4.10.0",  # py-opencv in conda
+    "h5py>=3.12.0",
+    "tables>=3.9.0",  # pytables in conda
+    "networkx>=3.2.0",
+    "tqdm>=4.67.0",
+    "pyarrow>=17.0.0",
+    "xarray>=2024.7.0",
+    "netCDF4>=1.7.0",
+    "umap-learn>=0.5.7",
+    "numba>=0.60.0",
+    "joblib>=1.4.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter>=1.0.0",
+    "jupyterlab>=4.1.0",
+    "ipython>=8.18.0",
+]
