@@ -3,6 +3,8 @@
 Behavioral analysis pipeline for multi-animal social experiments combining [s-DANNCE](https://github.com/tqxli/sdannce) 3D pose estimation with calcium imaging from miniscope recordings. Calcium imaging processing is customized from [MiniAn](https://github.com/denisecailab/minian).
 Calibration is done from [newsdannce](https://github.com/tdunnlab/newsdannce). Recording is handled by [campy](https://github.com/data-hound/campy).
 
+![Demo Video](demo/side_by_side.gif)
+
 ## Installation
 
 We recommend installing BBOP using the following steps:
