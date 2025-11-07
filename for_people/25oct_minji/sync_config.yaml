@@ -1,0 +1,13 @@
+base: /path/to/local/base
+remote: user@host:/remote/base
+glob: '**/*'
+include:
+  - MIR_Aligned/frame_mapping.json
+  - MIR_Aligned/overlay*.png
+  - df_*_label3d_dannce.mat
+exclude:
+  - '*.tmp'
+  - '*.log'
+  - '*.mp4'
+  - '*.avi'
+dry_run: true

@@ -124,21 +124,136 @@ import pandas as pd
 #     print(f"Saved COM circle plot to:\n  {save_path}")
 
 # if animal not moving, then have a large plotter region...
-def plot_com_circle_for_path(
+# def plot_com_circle_for_path(
+#     base_path,
+#     pred_folder='DANNCE/predict00',
+#     vis_dir='vis',
+#     filename=None
+# ):
+#     """
+#     Load COM data, fit a circle to its convex hull, plot COM + hull + fit,
+#     and save under base_path/vis/.
+#     """
+#     #     Fallbacks:
+# #       1) base_path/pred_folder/com3d_used.mat
+# #       2) base_path/COM/pred_folder/com3d0.mat
+# #     """
+# #     # primary and fallback locations
+#     primary = os.path.join(base_path, pred_folder, 'com3d_used.mat')
+#     fallback = os.path.join(base_path, 'COM/predict00', 'com3d0.mat')
+
+#     if os.path.isfile(primary):
+#         com_file = primary
+#     elif os.path.isfile(fallback):
+#         com_file = fallback
+#         print(f"Primary COM file not found; using fallback: {com_file}")
+#     else:
+#         raise FileNotFoundError(
+#             f"Neither {primary} nor {fallback} exists."
+#         )
+
+#     mat = sio.loadmat(com_file)
+#     com = mat.get('com')
+#     if com is None:
+#         raise KeyError(f"'com' variable not found in {com_file}")
+#     x, y = com[:,0], com[:,1]
+
+#     # convex hull & circle fit
+#     pts = np.stack([x, y], axis=1)
+#     hull = ConvexHull(pts)
+#     hx, hy = pts[hull.vertices,0], pts[hull.vertices,1]
+#     init = [
+#         hx.mean(),
+#         hy.mean(),
+#         np.mean(np.hypot(hx - hx.mean(), hy - hy.mean()))
+#     ]
+
+#     def residuals(params, xh, yh):
+#         return np.hypot(xh - params[0], yh - params[1]) - params[2]
+
+#     res = least_squares(residuals, init, args=(hx, hy))
+#     xc, yc, r = res.x
+
+#     # plotting
+#     plt.figure(figsize=(7, 6))
+#     theta = np.linspace(0, 2*np.pi, 200)
+#     plt.scatter(x, y, s=4, alpha=0.3, label='COM')
+#     plt.scatter(hx, hy, s=8, color='g', label='Hull')
+#     plt.plot(xc + r*np.cos(theta), yc + r*np.sin(theta),
+#              'r-', lw=2, label='Fit')
+#     plt.scatter(xc, yc, s=40, color='b', label='Center')
+#     plt.gca().set_aspect('equal')
+#     plt.title(os.path.basename(base_path))
+#     plt.legend()
+
+#     # # adjust axis limits if radius is small
+#     # if r < 400:
+#     #     # padding can be fixed or a fraction of radius
+#     #     pad = max(50, r * 0.2)
+#     #     plt.xlim(xc - r - pad, xc + r + pad)
+#     #     plt.ylim(yc - r - pad, yc + r + pad)
+#     #     plt.gca().set_aspect('equal')  # re-enforce equal aspect
+
+#     min_radius = 500       # the radius you want as your visual floor
+#     pad_frac   = 0.05 #0.05 will be hopefully mimicing the default by matplotlib #0.2       # how much extra space around the circle
+
+#     # pick the larger of your true r or the visual floor
+#     eff_r = max(r, min_radius)
+
+#     # now pad off of that
+#     pad = eff_r * pad_frac
+
+#     ax = plt.gca()
+#     ax.set_aspect('equal')
+
+#     # set limits centered on (xc, yc)
+#     ax.set_xlim(xc - eff_r - pad, xc + eff_r + pad)
+#     ax.set_ylim(yc - eff_r - pad, yc + eff_r + pad)
+
+#     # save
+#     save_folder = os.path.join(base_path, vis_dir)
+#     os.makedirs(save_folder, exist_ok=True)
+#     if filename is None:
+#         filename = 'com_circle.png'
+#     save_path = os.path.join(save_folder, filename)
+#     plt.tight_layout()
+#     plt.savefig(save_path, dpi=300)
+#     plt.show()
+#     plt.close()
+#     print(f"Saved COM circle plot to:\n  {save_path}")
+
+
+def plot_com_circle_for_path( #NO CIRCLE/OPTIONAL VERSION
     base_path,
     pred_folder='DANNCE/predict00',
     vis_dir='vis',
-    filename=None
+    filename=None,
+    show_hull=True,
+    show_fit=True,
+    show_center=True
 ):
     """
     Load COM data, fit a circle to its convex hull, plot COM + hull + fit,
     and save under base_path/vis/.
+    
+    Parameters
+    ----------
+    base_path : str
+        Base directory path
+    pred_folder : str
+        Prediction folder name
+    vis_dir : str
+        Visualization output directory
+    filename : str, optional
+        Output filename (default: 'com_circle.png')
+    show_hull : bool
+        Whether to show convex hull points (default: True)
+    show_fit : bool
+        Whether to show fitted circle (default: True)
+    show_center : bool
+        Whether to show circle center (default: True)
     """
-    #     Fallbacks:
-#       1) base_path/pred_folder/com3d_used.mat
-#       2) base_path/COM/pred_folder/com3d0.mat
-#     """
-#     # primary and fallback locations
+    # primary and fallback locations
     primary = os.path.join(base_path, pred_folder, 'com3d_used.mat')
     fallback = os.path.join(base_path, 'COM/predict00', 'com3d0.mat')
 
@@ -158,7 +273,7 @@ def plot_com_circle_for_path(
         raise KeyError(f"'com' variable not found in {com_file}")
     x, y = com[:,0], com[:,1]
 
-    # convex hull & circle fit
+    # convex hull & circle fit (still compute even if not shown)
     pts = np.stack([x, y], axis=1)
     hull = ConvexHull(pts)
     hx, hy = pts[hull.vertices,0], pts[hull.vertices,1]
@@ -177,36 +292,33 @@ def plot_com_circle_for_path(
     # plotting
     plt.figure(figsize=(7, 6))
     theta = np.linspace(0, 2*np.pi, 200)
+    
+    # Always show COM
     plt.scatter(x, y, s=4, alpha=0.3, label='COM')
-    plt.scatter(hx, hy, s=8, color='g', label='Hull')
-    plt.plot(xc + r*np.cos(theta), yc + r*np.sin(theta),
-             'r-', lw=2, label='Fit')
-    plt.scatter(xc, yc, s=40, color='b', label='Center')
+    
+    # Optional elements
+    if show_hull:
+        plt.scatter(hx, hy, s=8, color='g', label='Hull')
+    
+    if show_fit:
+        plt.plot(xc + r*np.cos(theta), yc + r*np.sin(theta),
+                 'r-', lw=2, label='Fit')
+    
+    if show_center:
+        plt.scatter(xc, yc, s=40, color='b', label='Center')
+    
     plt.gca().set_aspect('equal')
     plt.title(os.path.basename(base_path))
     plt.legend()
 
-    # # adjust axis limits if radius is small
-    # if r < 400:
-    #     # padding can be fixed or a fraction of radius
-    #     pad = max(50, r * 0.2)
-    #     plt.xlim(xc - r - pad, xc + r + pad)
-    #     plt.ylim(yc - r - pad, yc + r + pad)
-    #     plt.gca().set_aspect('equal')  # re-enforce equal aspect
+    min_radius = 500
+    pad_frac   = 0.05
 
-    min_radius = 500       # the radius you want as your visual floor
-    pad_frac   = 0.05 #0.05 will be hopefully mimicing the default by matplotlib #0.2       # how much extra space around the circle
-
-    # pick the larger of your true r or the visual floor
     eff_r = max(r, min_radius)
-
-    # now pad off of that
     pad = eff_r * pad_frac
 
     ax = plt.gca()
     ax.set_aspect('equal')
-
-    # set limits centered on (xc, yc)
     ax.set_xlim(xc - eff_r - pad, xc + eff_r + pad)
     ax.set_ylim(yc - eff_r - pad, yc + eff_r + pad)
 
@@ -221,6 +333,7 @@ def plot_com_circle_for_path(
     plt.show()
     plt.close()
     print(f"Saved COM circle plot to:\n  {save_path}")
+
 
 # below works well and amazing, except that it will adjust and estimate, when sometimes animal did not move much it would not work lol
 # def plot_com_circle_for_path(
