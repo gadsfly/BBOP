@@ -244,6 +244,8 @@ def miniscope_mapped_to_json(
     # miniscope root from txt
     with open(os.path.join(rec_path, mini_path_file), 'r') as f:
         mini_path = f.read().strip()
+        if not os.path.exists(mini_path):
+            mini_path = mini_path.replace('/data/big_rim/rsync_dcc_sum/', '/hpc/group/tdunn/Bryan_Rigs/BigOpenField/')
 
     # full miniscope DF indexed by miniscope timestamps
     df_full = load_miniscope_signals_df_no_crop(
