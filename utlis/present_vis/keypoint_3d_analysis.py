@@ -1583,7 +1583,7 @@ def plot_ca_heatmap_and_distance(
             cbar.set_label("z-score")
     else:
         ax0.text(0.5, 0.5, "No neuron data", ha="center", va="center", transform=ax0.transAxes)
-        ax0.set_title("No Neuron Activity")
+        # ax0.set_title("No Neuron Activity")
         ax0.tick_params(labelbottom=False)
 
     # (B) Distance trace
@@ -1683,10 +1683,10 @@ def plot_ca_heatmap_and_distance(
                                     smooth_window=distance_smooth_window)
         dist = np.asarray(dist, dtype=float).reshape(-1)
         has_z = {"com1_z", "com2_z"}.issubset(set(merged.columns))
-        dist_title = f"COM1–COM2 distance ({'3D' if has_z else '2D'})"
+        dist_title = f"Inter-animal distance ({'3D' if has_z else '2D'})"
     except Exception as e:
         dist = None
-        dist_title = f"COM1–COM2 distance (unavailable: {e})"
+        dist_title = f"Inter-animal distance (unavailable: {e})"
 
     # ----- ΔF/F matrix -----
     roi_cols = [c for c in merged.columns if c.startswith("dF_F_roi")]
@@ -2503,6 +2503,837 @@ def plot_incident_windows_3d_advantage(
 # ==============================================================================
 
 
+# def plot_incident_windows_newset(
+#     merged: pd.DataFrame,
+#     frames: pd.DataFrame,
+#     mask: Union[pd.Series, np.ndarray],
+#     *,
+#     pre_s: float = 2.0,
+#     post_s: float = 2.0,
+#     approach_thresh_mm: float = 120.0,
+#     contact_thresh_mm: float = 50.0,
+#     variance_drop_pct: float = 5.0,
+#     heatmap_downsample: int = 1,
+#     heatmap_cmap: str = "viridis",
+#     title_prefix: Optional[str] = None,
+#     save: bool = False,
+#     out_dir: Optional[str] = None,
+#     legend_outside: bool = True,
+#     show_colorbar: bool = True,   # <— NEW
+# ):
+#     # time
+#     t_merged_s, _ = _time_from_index_or_col(merged)
+#     t_frames_s, _ = _time_from_index_or_col(frames)
+#     if t_merged_s.size == 0 or t_frames_s.size == 0:
+#         print("[WARN] empty time vectors"); return
+#     t_merged_ms = t_merged_s * 1000.0
+
+#     # metrics
+#     try:
+#         comp = compute_com_distance(
+#             merged, p1="com1", p2="com2",
+#             smooth_window=1, dist_smooth_window=1, return_components=True
+#         )
+#     except NameError:
+#         raise RuntimeError("compute_com_distance(...) not found; import it first.")
+#     d3d = comp["dist_mm"].to_numpy(float)
+#     com_dz = _com_dz_abs(merged)
+#     snout_d, snout_is3d = _snout_dist_3d(merged)
+#     snout_dz = _snout_dz_abs(merged)
+
+#     # neural + orientation
+#     A_full, order, _ = _neuron_matrix(merged, variance_drop_pct)
+#     have_neurons = (A_full.size > 0)
+#     pitch_a1, yaw_a1 = _pitch_yaw_deg(merged, "a1")
+#     pitch_a2, yaw_a2 = _pitch_yaw_deg(merged, "a2")
+
+#     # segments
+#     segs_fe = _segments_from_mask(mask)
+#     if segs_fe.size == 0:
+#         print("[INFO] mask has no True segments"); return
+#     seg_time_ms = _map_frame_segments_to_time(frames, segs_fe, col="timestamp_ms_mini")
+
+#     # style helpers
+#     def _light(ax):
+#         ax.grid(False)
+#         for s in ax.spines.values():
+#             s.set_linewidth(0.6); s.set_color("0.5")
+
+#     col_dist, col_vert = "C0", "C3"
+#     od = out_dir or "."
+
+#     for k,(t0_ms, t1_ms) in enumerate(seg_time_ms, start=1):
+#         if t1_ms < t0_ms: t0_ms, t1_ms = t1_ms, t0_ms
+#         i0 = int(np.searchsorted(t_merged_ms, t0_ms, side="left"))
+#         i1 = int(np.searchsorted(t_merged_ms, t1_ms, side="right")) - 1
+#         i0 = max(0, min(i0, len(t_merged_s)-1))
+#         i1 = max(0, min(i1, len(t_merged_s)-1))
+#         if i1 <= i0: continue
+
+#         seg = slice(i0, i1+1)
+#         if not np.any(np.isfinite(d3d[seg])): continue
+#         rep_idx = i0 + int(np.nanargmin(d3d[seg]))
+#         rep_t = float(t_merged_s[rep_idx])
+#         w = _window_bounds(t_merged_s, rep_t, pre_s, post_s)
+
+#         tloc = t_merged_s[w] - rep_t
+#         d3d_loc, com_dz_loc = d3d[w], com_dz[w]
+#         snout_loc, snout_dz_loc = snout_d[w], snout_dz[w]
+
+#         if have_neurons:
+#             A_loc = A_full[order, w]
+#             if heatmap_downsample > 1 and A_loc.shape[1] > 1:
+#                 step = int(heatmap_downsample)
+#                 A_plot = A_loc[:, ::step]; t_plot = tloc[::step]
+#             else:
+#                 A_plot, t_plot = A_loc, tloc
+#         else:
+#             A_plot = np.empty((0, len(tloc))); t_plot = tloc
+
+#         # ================= single figure (aligned) =================
+#         fig = plt.figure(figsize=(12, 12))
+#         ratios = [2.0, 1.2, 0.9, 1.0, 0.9, 0.9, 0.9]
+#         gs = fig.add_gridspec(nrows=len(ratios), ncols=1, height_ratios=ratios)
+#         fig.subplots_adjust(left=0.10, right=0.86, top=0.95, bottom=0.08, hspace=0.20)
+
+#         axes = [fig.add_subplot(gs[i,0]) for i in range(len(ratios))]
+#         ax0, ax1, ax2, ax3, ax4, ax5, ax6 = axes
+
+#         # (1) ΔF/F heatmap
+#         if A_plot.size > 0 and A_plot.shape[1] == t_plot.shape[0]:
+#             pcm = ax0.pcolormesh(                       # <— keep handle for cbar
+#                 t_plot, np.arange(A_plot.shape[0]+1),
+#                 np.vstack([A_plot, A_plot[-1:]]) if A_plot.shape[0] else np.zeros((1, A_plot.shape[1])),
+#                 cmap=heatmap_cmap, shading="auto"
+#             )
+#             ax0.set_title("Clustered Neuron Activity (z-scored)", fontsize=18)
+#             ax0.set_ylabel("Neurons")
+
+#             if show_colorbar:
+#                 # compact, non-intrusive; stays within ax0 box
+#                 cb = fig.colorbar(pcm, ax=ax0, fraction=0.025, pad=0.01)
+#                 cb.set_label("ΔF/F (z-score)", rotation=90)
+#                 cb.outline.set_linewidth(0.6)
+#                 cb.ax.tick_params(labelsize=9, width=0.6)
+#         else:
+#             ax0.text(0.5,0.5,"No neuron data",ha="center",va="center",transform=ax0.transAxes)
+#             ax0.set_title("No Neuron Activity", fontsize=18)
+#         ax0.tick_params(labelbottom=False); _light(ax0); ax0.axvline(0, lw=2.0, alpha=0.35)
+
+#         # (2) COM 3D
+#         l3d, = ax1.plot(tloc, d3d_loc, lw=2.8, color=col_dist, label="COM 3D")
+#         ax1.axhline(approach_thresh_mm, ls="--", lw=1.2, color="0.5")
+#         ax1.axhline(contact_thresh_mm,  ls=":",  lw=1.2, color="0.5")
+#         ax1.set_ylabel("COM dist (mm)"); ax1.set_title("COM distance", fontsize=18)
+#         ax1.tick_params(labelbottom=False); _light(ax1); ax1.axvline(0, lw=2.0, alpha=0.35)
+#         if legend_outside:
+#             ax1.legend(handles=[l3d], loc="center left", bbox_to_anchor=(1.02, 0.5),
+#                        frameon=False, fontsize=12)
+
+#         # (3) COM |Δz|
+#         ax2.plot(tloc, com_dz_loc, lw=2.4, color=col_vert)
+#         ax2.set_ylabel("|Δz| (mm)"); ax2.set_title("COM vertical separation", fontsize=18)
+#         ax2.tick_params(labelbottom=False); _light(ax2); ax2.axvline(0, lw=2.0, alpha=0.35)
+
+#         # (4) Snout–snout distance
+#         ax3.plot(tloc, snout_loc, lw=2.4, color=col_dist)
+#         ax3.set_ylabel("Snout dist (mm)")
+#         ax3.set_title("Snout–snout distance" + (" (3D)" if snout_is3d else " (2D)"), fontsize=18)
+#         ax3.tick_params(labelbottom=False); _light(ax3); ax3.axvline(0, lw=2.0, alpha=0.35)
+
+#         # (5) Snout |Δz|
+#         ax4.plot(tloc, snout_dz_loc, lw=2.4, color=col_vert)
+#         ax4.set_ylabel("|Δz| (mm)"); ax4.set_title("Snout vertical separation", fontsize=18)
+#         ax4.tick_params(labelbottom=False); _light(ax4); ax4.axvline(0, lw=2.0, alpha=0.35)
+
+#         # (6) Pitch
+#         lp1, = ax5.plot(tloc, pitch_a1[w], lw=2.2, label="A pitch")
+#         lp2, = ax5.plot(tloc, pitch_a2[w], lw=2.2, label="B pitch")
+#         ax5.set_ylabel("Pitch (deg)"); ax5.set_title("Head pitch", fontsize=18)
+#         ax5.tick_params(labelbottom=False); _light(ax5); ax5.axvline(0, lw=2.0, alpha=0.35)
+#         if legend_outside:
+#             ax5.legend(handles=[lp1,lp2], loc="center left", bbox_to_anchor=(1.02, 0.5),
+#                        frameon=False, fontsize=12)
+
+#         # (7) Yaw
+#         ly1, = ax6.plot(tloc, yaw_a1[w],  lw=2.2, label="A yaw")
+#         ly2, = ax6.plot(tloc, yaw_a2[w],  lw=2.2, label="B yaw")
+#         ax6.set_xlabel("Time from event (s)"); ax6.set_ylabel("Yaw (deg)")
+#         ax6.set_title("Head yaw (global XY)", fontsize=18); _light(ax6)
+#         ax6.axvline(0, lw=2.0, alpha=0.35)
+#         if legend_outside:
+#             ax6.legend(handles=[ly1,ly2], loc="center left", bbox_to_anchor=(1.02, 0.5),
+#                        frameon=False, fontsize=12)
+
+#         fig.align_ylabels(axes)
+
+#         if save:
+#             os.makedirs(od, exist_ok=True)
+#             fig.savefig(os.path.join(od, f"event_{k:03d}_all_panels.png"), dpi=300)
+#         plt.show(); plt.close(fig)
+
+
+# def plot_incident_windows_newset(
+#     merged: pd.DataFrame,
+#     frames: pd.DataFrame,
+#     mask: Union[pd.Series, np.ndarray],
+#     *,
+#     pre_s: float = 2.0,
+#     post_s: float = 2.0,
+#     approach_thresh_mm: float = 120.0,
+#     contact_thresh_mm: float = 50.0,
+#     variance_drop_pct: float = 5.0,
+#     heatmap_downsample: int = 1,
+#     heatmap_cmap: str = "viridis",
+#     title_prefix: Optional[str] = None,
+#     save: bool = False,
+#     out_dir: Optional[str] = None,
+#     legend_outside: bool = True,
+#     show_colorbar: bool = True,   # <— NEW
+# ):
+#     # time
+#     t_merged_s, _ = _time_from_index_or_col(merged)
+#     t_frames_s, _ = _time_from_index_or_col(frames)
+#     if t_merged_s.size == 0 or t_frames_s.size == 0:
+#         print("[WARN] empty time vectors"); return
+#     t_merged_ms = t_merged_s * 1000.0
+
+#     # metrics
+#     try:
+#         comp = compute_com_distance(
+#             merged, p1="com1", p2="com2",
+#             smooth_window=1, dist_smooth_window=1, return_components=True
+#         )
+#     except NameError:
+#         raise RuntimeError("compute_com_distance(...) not found; import it first.")
+#     d3d = comp["dist_mm"].to_numpy(float)
+#     com_dz = _com_dz_abs(merged)
+#     snout_d, snout_is3d = _snout_dist_3d(merged)
+#     snout_dz = _snout_dz_abs(merged)
+
+#     # neural + orientation
+#     A_full, order, _ = _neuron_matrix(merged, variance_drop_pct)
+#     have_neurons = (A_full.size > 0)
+#     pitch_a1, yaw_a1 = _pitch_yaw_deg(merged, "a1")
+#     pitch_a2, yaw_a2 = _pitch_yaw_deg(merged, "a2")
+
+#     # segments
+#     segs_fe = _segments_from_mask(mask)
+#     if segs_fe.size == 0:
+#         print("[INFO] mask has no True segments"); return
+#     seg_time_ms = _map_frame_segments_to_time(frames, segs_fe, col="timestamp_ms_mini")
+
+#     # style helpers
+#     def _light(ax):
+#         ax.grid(False)
+#         for s in ax.spines.values():
+#             s.set_linewidth(0.6); s.set_color("0.5")
+
+#     col_dist, col_vert = "C0", "C3"
+#     od = out_dir or "."
+
+#     # Collect all valid events first
+#     event_data = []
+#     for k,(t0_ms, t1_ms) in enumerate(seg_time_ms, start=1):
+#         if t1_ms < t0_ms: t0_ms, t1_ms = t1_ms, t0_ms
+#         i0 = int(np.searchsorted(t_merged_ms, t0_ms, side="left"))
+#         i1 = int(np.searchsorted(t_merged_ms, t1_ms, side="right")) - 1
+#         i0 = max(0, min(i0, len(t_merged_s)-1))
+#         i1 = max(0, min(i1, len(t_merged_s)-1))
+#         if i1 <= i0: continue
+
+#         seg = slice(i0, i1+1)
+#         if not np.any(np.isfinite(d3d[seg])): continue
+#         rep_idx = i0 + int(np.nanargmin(d3d[seg]))
+#         rep_t = float(t_merged_s[rep_idx])
+#         w = _window_bounds(t_merged_s, rep_t, pre_s, post_s)
+
+#         tloc = t_merged_s[w] - rep_t
+#         d3d_loc, com_dz_loc = d3d[w], com_dz[w]
+#         snout_loc, snout_dz_loc = snout_d[w], snout_dz[w]
+
+#         if have_neurons:
+#             A_loc = A_full[order, w]
+#             if heatmap_downsample > 1 and A_loc.shape[1] > 1:
+#                 step = int(heatmap_downsample)
+#                 A_plot = A_loc[:, ::step]; t_plot = tloc[::step]
+#             else:
+#                 A_plot, t_plot = A_loc, tloc
+#         else:
+#             A_plot = np.empty((0, len(tloc))); t_plot = tloc
+
+#         event_data.append({
+#             'k': k,
+#             'w': w,
+#             'tloc': tloc,
+#             'd3d_loc': d3d_loc,
+#             'com_dz_loc': com_dz_loc,
+#             'snout_loc': snout_loc,
+#             'snout_dz_loc': snout_dz_loc,
+#             'A_plot': A_plot,
+#             't_plot': t_plot
+#         })
+
+#     if not event_data:
+#         print("[INFO] No valid events to plot"); return
+
+#     n_events = len(event_data)
+    
+#     # ================= Multi-column figure (all events side-by-side) =================
+#     # Each event gets ~4 inches width, making 2s windows look more natural
+#     fig_width = min(4 * n_events, 20)  # Cap at 20 inches total
+#     fig = plt.figure(figsize=(fig_width, 11))
+    
+#     ratios = [2.0, 1.2, 0.9, 1.0, 0.9, 0.9, 0.9]
+#     n_rows = len(ratios)
+    
+#     # Create grid: n_rows x n_events
+#     gs = fig.add_gridspec(nrows=n_rows, ncols=n_events, height_ratios=ratios,
+#                          hspace=0.35, wspace=0.25)
+    
+#     # Adjust margins
+#     fig.subplots_adjust(left=0.08, right=0.96, top=0.94, bottom=0.06)
+
+#     # Plot each event in its own column
+#     for col_idx, evt in enumerate(event_data):
+#         k = evt['k']
+#         tloc = evt['tloc']
+#         d3d_loc = evt['d3d_loc']
+#         com_dz_loc = evt['com_dz_loc']
+#         snout_loc = evt['snout_loc']
+#         snout_dz_loc = evt['snout_dz_loc']
+#         A_plot = evt['A_plot']
+#         t_plot = evt['t_plot']
+#         w = evt['w']
+        
+#         # Create subplots for this column
+#         axes = [fig.add_subplot(gs[row, col_idx]) for row in range(n_rows)]
+#         ax0, ax1, ax2, ax3, ax4, ax5, ax6 = axes
+
+#         # (1) ΔF/F heatmap
+#         if A_plot.size > 0 and A_plot.shape[1] == t_plot.shape[0]:
+#             pcm = ax0.pcolormesh(
+#                 t_plot, np.arange(A_plot.shape[0]+1),
+#                 np.vstack([A_plot, A_plot[-1:]]) if A_plot.shape[0] else np.zeros((1, A_plot.shape[1])),
+#                 cmap=heatmap_cmap, shading="auto"
+#             )
+#             if col_idx == 0:  # Only show title on first column
+#                 ax0.set_title(f"Event {k}\nNeuron Activity", fontsize=12, pad=8)
+#             else:
+#                 ax0.set_title(f"Event {k}", fontsize=12, pad=8)
+            
+#             if col_idx == 0:  # Only leftmost gets y-label
+#                 ax0.set_ylabel("Neurons", fontsize=10)
+
+#             if show_colorbar and col_idx == n_events - 1:  # Only rightmost gets colorbar
+#                 cb = fig.colorbar(pcm, ax=ax0, fraction=0.04, pad=0.02)
+#                 cb.set_label("ΔF/F", rotation=90, fontsize=9)
+#                 cb.outline.set_linewidth(0.6)
+#                 cb.ax.tick_params(labelsize=8, width=0.6)
+#         else:
+#             ax0.text(0.5,0.5,"No data",ha="center",va="center",transform=ax0.transAxes, fontsize=9)
+#             ax0.set_title(f"Event {k}", fontsize=12, pad=8)
+#         ax0.tick_params(labelbottom=False, labelsize=9); _light(ax0); ax0.axvline(0, lw=1.5, alpha=0.35)
+
+#         # (2) COM 3D
+#         ax1.plot(tloc, d3d_loc, lw=2.2, color=col_dist)
+#         ax1.axhline(approach_thresh_mm, ls="--", lw=1.0, color="0.5")
+#         ax1.axhline(contact_thresh_mm,  ls=":",  lw=1.0, color="0.5")
+#         if col_idx == 0:
+#             ax1.set_ylabel("COM (mm)", fontsize=10)
+#         ax1.tick_params(labelbottom=False, labelsize=9); _light(ax1); ax1.axvline(0, lw=1.5, alpha=0.35)
+
+#         # (3) COM |Δz|
+#         ax2.plot(tloc, com_dz_loc, lw=2.0, color=col_vert)
+#         if col_idx == 0:
+#             ax2.set_ylabel("|Δz| (mm)", fontsize=10)
+#         ax2.tick_params(labelbottom=False, labelsize=9); _light(ax2); ax2.axvline(0, lw=1.5, alpha=0.35)
+
+#         # (4) Snout–snout distance
+#         ax3.plot(tloc, snout_loc, lw=2.0, color=col_dist)
+#         if col_idx == 0:
+#             ax3.set_ylabel("Snout (mm)", fontsize=10)
+#         ax3.tick_params(labelbottom=False, labelsize=9); _light(ax3); ax3.axvline(0, lw=1.5, alpha=0.35)
+
+#         # (5) Snout |Δz|
+#         ax4.plot(tloc, snout_dz_loc, lw=2.0, color=col_vert)
+#         if col_idx == 0:
+#             ax4.set_ylabel("|Δz| (mm)", fontsize=10)
+#         ax4.tick_params(labelbottom=False, labelsize=9); _light(ax4); ax4.axvline(0, lw=1.5, alpha=0.35)
+
+#         # (6) Pitch
+#         ax5.plot(tloc, pitch_a1[w], lw=1.8, label="A" if col_idx==0 else "")
+#         ax5.plot(tloc, pitch_a2[w], lw=1.8, label="B" if col_idx==0 else "")
+#         if col_idx == 0:
+#             ax5.set_ylabel("Pitch (°)", fontsize=10)
+#             ax5.legend(fontsize=8, frameon=False, loc='upper left')
+#         ax5.tick_params(labelbottom=False, labelsize=9); _light(ax5); ax5.axvline(0, lw=1.5, alpha=0.35)
+
+#         # (7) Yaw
+#         ax6.plot(tloc, yaw_a1[w],  lw=1.8, label="A" if col_idx==0 else "")
+#         ax6.plot(tloc, yaw_a2[w],  lw=1.8, label="B" if col_idx==0 else "")
+#         ax6.set_xlabel("Time (s)", fontsize=10)
+#         if col_idx == 0:
+#             ax6.set_ylabel("Yaw (°)", fontsize=10)
+#             ax6.legend(fontsize=8, frameon=False, loc='upper left')
+#         ax6.tick_params(labelsize=9); _light(ax6); ax6.axvline(0, lw=1.5, alpha=0.35)
+
+#     if title_prefix:
+#         fig.suptitle(title_prefix, fontsize=14, y=0.98)
+
+#     if save:
+#         os.makedirs(od, exist_ok=True)
+#         fig.savefig(os.path.join(od, "all_events_comparison.png"), dpi=300, bbox_inches='tight')
+    
+#     plt.show()
+#     plt.close(fig)
+
+# def plot_incident_windows_newset(
+#     merged: pd.DataFrame,
+#     frames: pd.DataFrame,
+#     mask: Union[pd.Series, np.ndarray],
+#     *,
+#     pre_s: float = 2.0,
+#     post_s: float = 2.0,
+#     approach_thresh_mm: float = 120.0,
+#     contact_thresh_mm: float = 50.0,
+#     variance_drop_pct: float = 5.0,
+#     heatmap_downsample: int = 1,
+#     heatmap_cmap: str = "viridis",
+#     title_prefix: Optional[str] = None,
+#     save: bool = False,
+#     out_dir: Optional[str] = None,
+#     legend_outside: bool = True,
+#     show_colorbar: bool = True,
+# ):
+#     """Original version: one figure per event."""
+#     # time
+#     t_merged_s, _ = _time_from_index_or_col(merged)
+#     t_frames_s, _ = _time_from_index_or_col(frames)
+#     if t_merged_s.size == 0 or t_frames_s.size == 0:
+#         print("[WARN] empty time vectors"); return
+#     t_merged_ms = t_merged_s * 1000.0
+
+#     # metrics
+#     try:
+#         comp = compute_com_distance(
+#             merged, p1="com1", p2="com2",
+#             smooth_window=1, dist_smooth_window=1, return_components=True
+#         )
+#     except NameError:
+#         raise RuntimeError("compute_com_distance(...) not found; import it first.")
+#     d3d = comp["dist_mm"].to_numpy(float)
+#     com_dz = _com_dz_abs(merged)
+#     snout_d, snout_is3d = _snout_dist_3d(merged)
+#     snout_dz = _snout_dz_abs(merged)
+
+#     # neural + orientation
+#     A_full, order, _ = _neuron_matrix(merged, variance_drop_pct)
+#     have_neurons = (A_full.size > 0)
+    
+#     # Try to get pitch/yaw with error handling
+#     try:
+#         pitch_a1, yaw_a1 = _pitch_yaw_deg(merged, "a1")
+#         pitch_a2, yaw_a2 = _pitch_yaw_deg(merged, "a2")
+#         have_orientation = True
+#         # Check if data is actually valid
+#         if (pitch_a1.size == 0 or np.all(~np.isfinite(pitch_a1)) or 
+#             pitch_a2.size == 0 or np.all(~np.isfinite(pitch_a2))):
+#             print("[WARN] Pitch/yaw data exists but is all NaN/invalid")
+#             have_orientation = False
+#     except Exception as e:
+#         print(f"[WARN] Could not compute pitch/yaw: {e}")
+#         have_orientation = False
+#         # Create dummy arrays
+#         pitch_a1 = np.zeros(len(merged))
+#         pitch_a2 = np.zeros(len(merged))
+#         yaw_a1 = np.zeros(len(merged))
+#         yaw_a2 = np.zeros(len(merged))
+
+#     # segments
+#     segs_fe = _segments_from_mask(mask)
+#     if segs_fe.size == 0:
+#         print("[INFO] mask has no True segments"); return
+#     seg_time_ms = _map_frame_segments_to_time(frames, segs_fe, col="timestamp_ms_mini")
+
+#     # style helpers
+#     def _light(ax):
+#         ax.grid(False)
+#         for s in ax.spines.values():
+#             s.set_linewidth(0.6); s.set_color("0.5")
+
+#     col_dist, col_vert = "C0", "C3"
+#     od = out_dir or "."
+
+#     for k,(t0_ms, t1_ms) in enumerate(seg_time_ms, start=1):
+#         if t1_ms < t0_ms: t0_ms, t1_ms = t1_ms, t0_ms
+#         i0 = int(np.searchsorted(t_merged_ms, t0_ms, side="left"))
+#         i1 = int(np.searchsorted(t_merged_ms, t1_ms, side="right")) - 1
+#         i0 = max(0, min(i0, len(t_merged_s)-1))
+#         i1 = max(0, min(i1, len(t_merged_s)-1))
+#         if i1 <= i0: continue
+
+#         seg = slice(i0, i1+1)
+#         if not np.any(np.isfinite(d3d[seg])): continue
+#         rep_idx = i0 + int(np.nanargmin(d3d[seg]))
+#         rep_t = float(t_merged_s[rep_idx])
+#         w = _window_bounds(t_merged_s, rep_t, pre_s, post_s)
+
+#         tloc = t_merged_s[w] - rep_t
+#         d3d_loc, com_dz_loc = d3d[w], com_dz[w]
+#         snout_loc, snout_dz_loc = snout_d[w], snout_dz[w]
+
+#         if have_neurons:
+#             A_loc = A_full[order, w]
+#             if heatmap_downsample > 1 and A_loc.shape[1] > 1:
+#                 step = int(heatmap_downsample)
+#                 A_plot = A_loc[:, ::step]; t_plot = tloc[::step]
+#             else:
+#                 A_plot, t_plot = A_loc, tloc
+#         else:
+#             A_plot = np.empty((0, len(tloc))); t_plot = tloc
+
+#         # ================= single figure (aligned) =================
+#         fig = plt.figure(figsize=(12, 12))
+#         ratios = [2.0, 1.2, 0.9, 1.0, 0.9, 0.9, 0.9]
+#         gs = fig.add_gridspec(nrows=len(ratios), ncols=1, height_ratios=ratios)
+#         fig.subplots_adjust(left=0.10, right=0.86, top=0.95, bottom=0.08, hspace=0.35)
+
+#         axes = [fig.add_subplot(gs[i,0]) for i in range(len(ratios))]
+#         ax0, ax1, ax2, ax3, ax4, ax5, ax6 = axes
+
+#         # (1) ΔF/F heatmap
+#         if A_plot.size > 0 and A_plot.shape[1] == t_plot.shape[0]:
+#             pcm = ax0.pcolormesh(
+#                 t_plot, np.arange(A_plot.shape[0]+1),
+#                 np.vstack([A_plot, A_plot[-1:]]) if A_plot.shape[0] else np.zeros((1, A_plot.shape[1])),
+#                 cmap=heatmap_cmap, shading="auto"
+#             )
+#             ax0.set_title("Clustered Neuron Activity (z-scored)", fontsize=14)
+#             ax0.set_ylabel("Neurons", fontsize=11)
+
+#             if show_colorbar:
+#                 cb = fig.colorbar(pcm, ax=ax0, fraction=0.025, pad=0.01)
+#                 cb.set_label("ΔF/F (z-score)", rotation=90, fontsize=10)
+#                 cb.outline.set_linewidth(0.6)
+#                 cb.ax.tick_params(labelsize=9, width=0.6)
+#         else:
+#             ax0.text(0.5,0.5,"No neuron data",ha="center",va="center",transform=ax0.transAxes)
+#             ax0.set_title("No Neuron Activity", fontsize=14)
+#         ax0.tick_params(labelbottom=False); _light(ax0); ax0.axvline(0, lw=2.0, alpha=0.35)
+
+#         # (2) COM 3D
+#         l3d, = ax1.plot(tloc, d3d_loc, lw=2.8, color=col_dist, label="COM 3D")
+#         ax1.axhline(approach_thresh_mm, ls="--", lw=1.2, color="0.5")
+#         ax1.axhline(contact_thresh_mm,  ls=":",  lw=1.2, color="0.5")
+#         ax1.set_ylabel("COM dist (mm)", fontsize=11)
+#         ax1.set_title("COM distance", fontsize=14)
+#         ax1.tick_params(labelbottom=False); _light(ax1); ax1.axvline(0, lw=2.0, alpha=0.35)
+#         if legend_outside:
+#             ax1.legend(handles=[l3d], loc="center left", bbox_to_anchor=(1.02, 0.5),
+#                        frameon=False, fontsize=11)
+
+#         # (3) COM |Δz|
+#         ax2.plot(tloc, com_dz_loc, lw=2.4, color=col_vert)
+#         ax2.set_ylabel("|Δz| (mm)", fontsize=11)
+#         ax2.set_title("COM vertical separation", fontsize=14)
+#         ax2.tick_params(labelbottom=False); _light(ax2); ax2.axvline(0, lw=2.0, alpha=0.35)
+
+#         # (4) Snout–snout distance
+#         ax3.plot(tloc, snout_loc, lw=2.4, color=col_dist)
+#         ax3.set_ylabel("Snout dist (mm)", fontsize=11)
+#         ax3.set_title("Snout–snout distance" + (" (3D)" if snout_is3d else " (2D)"), fontsize=14)
+#         ax3.tick_params(labelbottom=False); _light(ax3); ax3.axvline(0, lw=2.0, alpha=0.35)
+
+#         # (5) Snout |Δz|
+#         ax4.plot(tloc, snout_dz_loc, lw=2.4, color=col_vert)
+#         ax4.set_ylabel("|Δz| (mm)", fontsize=11)
+#         ax4.set_title("Snout vertical separation", fontsize=14)
+#         ax4.tick_params(labelbottom=False); _light(ax4); ax4.axvline(0, lw=2.0, alpha=0.35)
+
+#         # (6) Pitch
+#         if have_orientation:
+#             lp1, = ax5.plot(tloc, pitch_a1[w], lw=2.2, label="A pitch")
+#             lp2, = ax5.plot(tloc, pitch_a2[w], lw=2.2, label="B pitch")
+#         else:
+#             ax5.text(0.5,0.5,"No orientation data",ha="center",va="center",
+#                     transform=ax5.transAxes, fontsize=10)
+#         ax5.set_ylabel("Pitch (deg)", fontsize=11)
+#         ax5.set_title("Head pitch", fontsize=14)
+#         ax5.tick_params(labelbottom=False); _light(ax5); ax5.axvline(0, lw=2.0, alpha=0.35)
+#         if legend_outside and have_orientation:
+#             ax5.legend(handles=[lp1,lp2], loc="center left", bbox_to_anchor=(1.02, 0.5),
+#                        frameon=False, fontsize=11)
+
+#         # (7) Yaw
+#         if have_orientation:
+#             ly1, = ax6.plot(tloc, yaw_a1[w],  lw=2.2, label="A yaw")
+#             ly2, = ax6.plot(tloc, yaw_a2[w],  lw=2.2, label="B yaw")
+#         else:
+#             ax6.text(0.5,0.5,"No orientation data",ha="center",va="center",
+#                     transform=ax6.transAxes, fontsize=10)
+#         ax6.set_xlabel("Time from event (s)", fontsize=11)
+#         ax6.set_ylabel("Yaw (deg)", fontsize=11)
+#         ax6.set_title("Head yaw (global XY)", fontsize=14)
+#         _light(ax6); ax6.axvline(0, lw=2.0, alpha=0.35)
+#         if legend_outside and have_orientation:
+#             ax6.legend(handles=[ly1,ly2], loc="center left", bbox_to_anchor=(1.02, 0.5),
+#                        frameon=False, fontsize=11)
+
+#         fig.align_ylabels(axes)
+
+#         if save:
+#             os.makedirs(od, exist_ok=True)
+#             fig.savefig(os.path.join(od, f"event_{k:03d}_all_panels.png"), dpi=300)
+#         plt.show(); plt.close(fig)
+
+
+# def plot_incident_windows_newset_comb(
+#     merged: pd.DataFrame,
+#     frames: pd.DataFrame,
+#     mask: Union[pd.Series, np.ndarray],
+#     *,
+#     pre_s: float = 2.0,
+#     post_s: float = 2.0,
+#     approach_thresh_mm: float = 120.0,
+#     contact_thresh_mm: float = 50.0,
+#     variance_drop_pct: float = 5.0,
+#     heatmap_downsample: int = 1,
+#     heatmap_cmap: str = "viridis",
+#     title_prefix: Optional[str] = None,
+#     save: bool = False,
+#     out_dir: Optional[str] = None,
+#     legend_outside: bool = True,
+#     show_colorbar: bool = True,
+# ):
+#     """Combined version: all events side-by-side in one figure."""
+#     # time
+#     t_merged_s, _ = _time_from_index_or_col(merged)
+#     t_frames_s, _ = _time_from_index_or_col(frames)
+#     if t_merged_s.size == 0 or t_frames_s.size == 0:
+#         print("[WARN] empty time vectors"); return
+#     t_merged_ms = t_merged_s * 1000.0
+
+#     # metrics
+#     try:
+#         comp = compute_com_distance(
+#             merged, p1="com1", p2="com2",
+#             smooth_window=1, dist_smooth_window=1, return_components=True
+#         )
+#     except NameError:
+#         raise RuntimeError("compute_com_distance(...) not found; import it first.")
+#     d3d = comp["dist_mm"].to_numpy(float)
+#     com_dz = _com_dz_abs(merged)
+#     snout_d, snout_is3d = _snout_dist_3d(merged)
+#     snout_dz = _snout_dz_abs(merged)
+
+#     # neural + orientation
+#     A_full, order, _ = _neuron_matrix(merged, variance_drop_pct)
+#     have_neurons = (A_full.size > 0)
+    
+#     # Try to get pitch/yaw with error handling
+#     try:
+#         pitch_a1, yaw_a1 = _pitch_yaw_deg(merged, "a1")
+#         pitch_a2, yaw_a2 = _pitch_yaw_deg(merged, "a2")
+#         have_orientation = True
+#         # Check if data is actually valid
+#         if (pitch_a1.size == 0 or np.all(~np.isfinite(pitch_a1)) or 
+#             pitch_a2.size == 0 or np.all(~np.isfinite(pitch_a2))):
+#             print("[WARN] Pitch/yaw data exists but is all NaN/invalid")
+#             have_orientation = False
+#     except Exception as e:
+#         print(f"[WARN] Could not compute pitch/yaw: {e}")
+#         have_orientation = False
+#         # Create dummy arrays
+#         pitch_a1 = np.zeros(len(merged))
+#         pitch_a2 = np.zeros(len(merged))
+#         yaw_a1 = np.zeros(len(merged))
+#         yaw_a2 = np.zeros(len(merged))
+
+#     # segments
+#     segs_fe = _segments_from_mask(mask)
+#     if segs_fe.size == 0:
+#         print("[INFO] mask has no True segments"); return
+#     seg_time_ms = _map_frame_segments_to_time(frames, segs_fe, col="timestamp_ms_mini")
+
+#     # style helpers
+#     def _light(ax):
+#         ax.grid(False)
+#         for s in ax.spines.values():
+#             s.set_linewidth(0.6); s.set_color("0.5")
+
+#     col_dist, col_vert = "C0", "C3"
+#     od = out_dir or "."
+
+#     # Collect all valid events first
+#     event_data = []
+#     for k,(t0_ms, t1_ms) in enumerate(seg_time_ms, start=1):
+#         if t1_ms < t0_ms: t0_ms, t1_ms = t1_ms, t0_ms
+#         i0 = int(np.searchsorted(t_merged_ms, t0_ms, side="left"))
+#         i1 = int(np.searchsorted(t_merged_ms, t1_ms, side="right")) - 1
+#         i0 = max(0, min(i0, len(t_merged_s)-1))
+#         i1 = max(0, min(i1, len(t_merged_s)-1))
+#         if i1 <= i0: continue
+
+#         seg = slice(i0, i1+1)
+#         if not np.any(np.isfinite(d3d[seg])): continue
+#         rep_idx = i0 + int(np.nanargmin(d3d[seg]))
+#         rep_t = float(t_merged_s[rep_idx])
+#         w = _window_bounds(t_merged_s, rep_t, pre_s, post_s)
+
+#         tloc = t_merged_s[w] - rep_t
+#         d3d_loc, com_dz_loc = d3d[w], com_dz[w]
+#         snout_loc, snout_dz_loc = snout_d[w], snout_dz[w]
+
+#         if have_neurons:
+#             A_loc = A_full[order, w]
+#             if heatmap_downsample > 1 and A_loc.shape[1] > 1:
+#                 step = int(heatmap_downsample)
+#                 A_plot = A_loc[:, ::step]; t_plot = tloc[::step]
+#             else:
+#                 A_plot, t_plot = A_loc, tloc
+#         else:
+#             A_plot = np.empty((0, len(tloc))); t_plot = tloc
+
+#         event_data.append({
+#             'k': k,
+#             'w': w,
+#             'tloc': tloc,
+#             'd3d_loc': d3d_loc,
+#             'com_dz_loc': com_dz_loc,
+#             'snout_loc': snout_loc,
+#             'snout_dz_loc': snout_dz_loc,
+#             'A_plot': A_plot,
+#             't_plot': t_plot
+#         })
+
+#     if not event_data:
+#         print("[INFO] No valid events to plot"); return
+
+#     n_events = len(event_data)
+    
+#     # ================= Multi-column figure (all events side-by-side) =================
+#     # Each event gets ~4 inches width, making 2s windows look more natural
+#     fig_width = min(4 * n_events, 20)  # Cap at 20 inches total
+#     fig = plt.figure(figsize=(fig_width, 11))
+    
+#     ratios = [2.0, 1.2, 0.9, 1.0, 0.9, 0.9, 0.9]
+#     n_rows = len(ratios)
+    
+#     # Create grid: n_rows x n_events
+#     gs = fig.add_gridspec(nrows=n_rows, ncols=n_events, height_ratios=ratios,
+#                          hspace=0.35, wspace=0.25)
+    
+#     # Adjust margins
+#     fig.subplots_adjust(left=0.08, right=0.96, top=0.94, bottom=0.06)
+
+#     # Plot each event in its own column
+#     for col_idx, evt in enumerate(event_data):
+#         k = evt['k']
+#         tloc = evt['tloc']
+#         d3d_loc = evt['d3d_loc']
+#         com_dz_loc = evt['com_dz_loc']
+#         snout_loc = evt['snout_loc']
+#         snout_dz_loc = evt['snout_dz_loc']
+#         A_plot = evt['A_plot']
+#         t_plot = evt['t_plot']
+#         w = evt['w']
+        
+#         # Create subplots for this column
+#         axes = [fig.add_subplot(gs[row, col_idx]) for row in range(n_rows)]
+#         ax0, ax1, ax2, ax3, ax4, ax5, ax6 = axes
+
+#         # (1) ΔF/F heatmap
+#         if A_plot.size > 0 and A_plot.shape[1] == t_plot.shape[0]:
+#             pcm = ax0.pcolormesh(
+#                 t_plot, np.arange(A_plot.shape[0]+1),
+#                 np.vstack([A_plot, A_plot[-1:]]) if A_plot.shape[0] else np.zeros((1, A_plot.shape[1])),
+#                 cmap=heatmap_cmap, shading="auto"
+#             )
+#             if col_idx == 0:
+#                 ax0.set_title(f"Event {k}\nNeuron Activity", fontsize=12, pad=8)
+#             else:
+#                 ax0.set_title(f"Event {k}", fontsize=12, pad=8)
+            
+#             if col_idx == 0:
+#                 ax0.set_ylabel("Neurons", fontsize=10)
+
+#             if show_colorbar and col_idx == n_events - 1:
+#                 cb = fig.colorbar(pcm, ax=ax0, fraction=0.04, pad=0.02)
+#                 cb.set_label("ΔF/F", rotation=90, fontsize=9)
+#                 cb.outline.set_linewidth(0.6)
+#                 cb.ax.tick_params(labelsize=8, width=0.6)
+#         else:
+#             ax0.text(0.5,0.5,"No data",ha="center",va="center",transform=ax0.transAxes, fontsize=9)
+#             ax0.set_title(f"Event {k}", fontsize=12, pad=8)
+#         ax0.tick_params(labelbottom=False, labelsize=9); _light(ax0); ax0.axvline(0, lw=1.5, alpha=0.35)
+
+#         # (2) COM 3D
+#         ax1.plot(tloc, d3d_loc, lw=2.2, color=col_dist)
+#         ax1.axhline(approach_thresh_mm, ls="--", lw=1.0, color="0.5")
+#         ax1.axhline(contact_thresh_mm,  ls=":",  lw=1.0, color="0.5")
+#         if col_idx == 0:
+#             ax1.set_ylabel("COM (mm)", fontsize=10)
+#         ax1.tick_params(labelbottom=False, labelsize=9); _light(ax1); ax1.axvline(0, lw=1.5, alpha=0.35)
+
+#         # (3) COM |Δz|
+#         ax2.plot(tloc, com_dz_loc, lw=2.0, color=col_vert)
+#         if col_idx == 0:
+#             ax2.set_ylabel("|Δz| (mm)", fontsize=10)
+#         ax2.tick_params(labelbottom=False, labelsize=9); _light(ax2); ax2.axvline(0, lw=1.5, alpha=0.35)
+
+#         # (4) Snout–snout distance
+#         ax3.plot(tloc, snout_loc, lw=2.0, color=col_dist)
+#         if col_idx == 0:
+#             ax3.set_ylabel("Snout (mm)", fontsize=10)
+#         ax3.tick_params(labelbottom=False, labelsize=9); _light(ax3); ax3.axvline(0, lw=1.5, alpha=0.35)
+
+#         # (5) Snout |Δz|
+#         ax4.plot(tloc, snout_dz_loc, lw=2.0, color=col_vert)
+#         if col_idx == 0:
+#             ax4.set_ylabel("|Δz| (mm)", fontsize=10)
+#         ax4.tick_params(labelbottom=False, labelsize=9); _light(ax4); ax4.axvline(0, lw=1.5, alpha=0.35)
+
+#         # (6) Pitch
+#         if have_orientation:
+#             ax5.plot(tloc, pitch_a1[w], lw=1.8, label="A" if col_idx==0 else "")
+#             ax5.plot(tloc, pitch_a2[w], lw=1.8, label="B" if col_idx==0 else "")
+#             if col_idx == 0:
+#                 ax5.legend(fontsize=8, frameon=False, loc='upper left')
+#         else:
+#             if col_idx == 0:
+#                 ax5.text(0.5,0.5,"No data",ha="center",va="center",
+#                         transform=ax5.transAxes, fontsize=9)
+#         if col_idx == 0:
+#             ax5.set_ylabel("Pitch (°)", fontsize=10)
+#         ax5.tick_params(labelbottom=False, labelsize=9); _light(ax5); ax5.axvline(0, lw=1.5, alpha=0.35)
+
+#         # (7) Yaw
+#         if have_orientation:
+#             ax6.plot(tloc, yaw_a1[w],  lw=1.8, label="A" if col_idx==0 else "")
+#             ax6.plot(tloc, yaw_a2[w],  lw=1.8, label="B" if col_idx==0 else "")
+#             if col_idx == 0:
+#                 ax6.legend(fontsize=8, frameon=False, loc='upper left')
+#         else:
+#             if col_idx == 0:
+#                 ax6.text(0.5,0.5,"No data",ha="center",va="center",
+#                         transform=ax6.transAxes, fontsize=9)
+#         ax6.set_xlabel("Time (s)", fontsize=10)
+#         if col_idx == 0:
+#             ax6.set_ylabel("Yaw (°)", fontsize=10)
+#         ax6.tick_params(labelsize=9); _light(ax6); ax6.axvline(0, lw=1.5, alpha=0.35)
+
+#     if title_prefix:
+#         fig.suptitle(title_prefix, fontsize=14, y=0.98)
+
+#     if save:
+#         os.makedirs(od, exist_ok=True)
+#         fig.savefig(os.path.join(od, "all_events_comparison.png"), dpi=300, bbox_inches='tight')
+    
+#     plt.show()
+#     plt.close(fig)
+
+
 def plot_incident_windows_newset(
     merged: pd.DataFrame,
     frames: pd.DataFrame,
@@ -2519,8 +3350,13 @@ def plot_incident_windows_newset(
     save: bool = False,
     out_dir: Optional[str] = None,
     legend_outside: bool = True,
-    show_colorbar: bool = True,   # <— NEW
+    show_colorbar: bool = True,
+    show_orientation_legends: bool = False,  # NEW: control A/B legends
 ):
+    """
+    Original version: one figure per event.
+    Shows 7 panels vertically for each event.
+    """
     # time
     t_merged_s, _ = _time_from_index_or_col(merged)
     t_frames_s, _ = _time_from_index_or_col(frames)
@@ -2594,76 +3430,80 @@ def plot_incident_windows_newset(
         fig = plt.figure(figsize=(12, 12))
         ratios = [2.0, 1.2, 0.9, 1.0, 0.9, 0.9, 0.9]
         gs = fig.add_gridspec(nrows=len(ratios), ncols=1, height_ratios=ratios)
-        fig.subplots_adjust(left=0.10, right=0.86, top=0.95, bottom=0.08, hspace=0.20)
+        fig.subplots_adjust(left=0.10, right=0.86, top=0.95, bottom=0.08, hspace=0.35)
 
         axes = [fig.add_subplot(gs[i,0]) for i in range(len(ratios))]
         ax0, ax1, ax2, ax3, ax4, ax5, ax6 = axes
 
         # (1) ΔF/F heatmap
         if A_plot.size > 0 and A_plot.shape[1] == t_plot.shape[0]:
-            pcm = ax0.pcolormesh(                       # <— keep handle for cbar
+            pcm = ax0.pcolormesh(
                 t_plot, np.arange(A_plot.shape[0]+1),
                 np.vstack([A_plot, A_plot[-1:]]) if A_plot.shape[0] else np.zeros((1, A_plot.shape[1])),
                 cmap=heatmap_cmap, shading="auto"
             )
-            ax0.set_title("Clustered Neuron Activity (z-scored)", fontsize=18)
-            ax0.set_ylabel("Neurons")
+            ax0.set_title("Clustered Neuron Activity (z-scored)", fontsize=14)
+            ax0.set_ylabel("Neurons", fontsize=11)
 
             if show_colorbar:
-                # compact, non-intrusive; stays within ax0 box
                 cb = fig.colorbar(pcm, ax=ax0, fraction=0.025, pad=0.01)
-                cb.set_label("ΔF/F (z-score)", rotation=90)
+                cb.set_label("ΔF/F (z-score)", rotation=90, fontsize=10)
                 cb.outline.set_linewidth(0.6)
                 cb.ax.tick_params(labelsize=9, width=0.6)
         else:
             ax0.text(0.5,0.5,"No neuron data",ha="center",va="center",transform=ax0.transAxes)
-            ax0.set_title("No Neuron Activity", fontsize=18)
+            ax0.set_title("No Neuron Activity", fontsize=14)
         ax0.tick_params(labelbottom=False); _light(ax0); ax0.axvline(0, lw=2.0, alpha=0.35)
 
         # (2) COM 3D
         l3d, = ax1.plot(tloc, d3d_loc, lw=2.8, color=col_dist, label="COM 3D")
         ax1.axhline(approach_thresh_mm, ls="--", lw=1.2, color="0.5")
         ax1.axhline(contact_thresh_mm,  ls=":",  lw=1.2, color="0.5")
-        ax1.set_ylabel("COM dist (mm)"); ax1.set_title("COM distance", fontsize=18)
+        ax1.set_ylabel("COM dist (mm)", fontsize=11)
+        ax1.set_title("Inter-animal distance", fontsize=14)
         ax1.tick_params(labelbottom=False); _light(ax1); ax1.axvline(0, lw=2.0, alpha=0.35)
         if legend_outside:
             ax1.legend(handles=[l3d], loc="center left", bbox_to_anchor=(1.02, 0.5),
-                       frameon=False, fontsize=12)
+                       frameon=False, fontsize=11)
 
         # (3) COM |Δz|
         ax2.plot(tloc, com_dz_loc, lw=2.4, color=col_vert)
-        ax2.set_ylabel("|Δz| (mm)"); ax2.set_title("COM vertical separation", fontsize=18)
+        ax2.set_ylabel("|Δz| (mm)", fontsize=11)
+        ax2.set_title("COM vertical separation", fontsize=14)
         ax2.tick_params(labelbottom=False); _light(ax2); ax2.axvline(0, lw=2.0, alpha=0.35)
 
         # (4) Snout–snout distance
         ax3.plot(tloc, snout_loc, lw=2.4, color=col_dist)
-        ax3.set_ylabel("Snout dist (mm)")
-        ax3.set_title("Snout–snout distance" + (" (3D)" if snout_is3d else " (2D)"), fontsize=18)
+        ax3.set_ylabel("Snout dist (mm)", fontsize=11)
+        ax3.set_title("Snout–snout distance" + (" (3D)" if snout_is3d else " (2D)"), fontsize=14)
         ax3.tick_params(labelbottom=False); _light(ax3); ax3.axvline(0, lw=2.0, alpha=0.35)
 
         # (5) Snout |Δz|
         ax4.plot(tloc, snout_dz_loc, lw=2.4, color=col_vert)
-        ax4.set_ylabel("|Δz| (mm)"); ax4.set_title("Snout vertical separation", fontsize=18)
+        ax4.set_ylabel("|Δz| (mm)", fontsize=11)
+        ax4.set_title("Snout vertical separation", fontsize=14)
         ax4.tick_params(labelbottom=False); _light(ax4); ax4.axvline(0, lw=2.0, alpha=0.35)
 
         # (6) Pitch
         lp1, = ax5.plot(tloc, pitch_a1[w], lw=2.2, label="A pitch")
         lp2, = ax5.plot(tloc, pitch_a2[w], lw=2.2, label="B pitch")
-        ax5.set_ylabel("Pitch (deg)"); ax5.set_title("Head pitch", fontsize=18)
+        ax5.set_ylabel("Pitch (deg)", fontsize=11)
+        ax5.set_title("Head pitch", fontsize=14)
         ax5.tick_params(labelbottom=False); _light(ax5); ax5.axvline(0, lw=2.0, alpha=0.35)
-        if legend_outside:
+        if legend_outside and show_orientation_legends:
             ax5.legend(handles=[lp1,lp2], loc="center left", bbox_to_anchor=(1.02, 0.5),
-                       frameon=False, fontsize=12)
+                       frameon=False, fontsize=11)
 
         # (7) Yaw
         ly1, = ax6.plot(tloc, yaw_a1[w],  lw=2.2, label="A yaw")
         ly2, = ax6.plot(tloc, yaw_a2[w],  lw=2.2, label="B yaw")
-        ax6.set_xlabel("Time from event (s)"); ax6.set_ylabel("Yaw (deg)")
-        ax6.set_title("Head yaw (global XY)", fontsize=18); _light(ax6)
-        ax6.axvline(0, lw=2.0, alpha=0.35)
-        if legend_outside:
+        ax6.set_xlabel("Time from event (s)", fontsize=11)
+        ax6.set_ylabel("Yaw (deg)", fontsize=11)
+        ax6.set_title("Head yaw (global XY)", fontsize=14)
+        _light(ax6); ax6.axvline(0, lw=2.0, alpha=0.35)
+        if legend_outside and show_orientation_legends:
             ax6.legend(handles=[ly1,ly2], loc="center left", bbox_to_anchor=(1.02, 0.5),
-                       frameon=False, fontsize=12)
+                       frameon=False, fontsize=11)
 
         fig.align_ylabels(axes)
 
@@ -2671,6 +3511,257 @@ def plot_incident_windows_newset(
             os.makedirs(od, exist_ok=True)
             fig.savefig(os.path.join(od, f"event_{k:03d}_all_panels.png"), dpi=300)
         plt.show(); plt.close(fig)
+
+
+def plot_incident_windows_newset_comb(
+    merged: pd.DataFrame,
+    frames: pd.DataFrame,
+    mask: Union[pd.Series, np.ndarray],
+    *,
+    pre_s: float = 2.0,
+    post_s: float = 2.0,
+    approach_thresh_mm: float = 120.0,
+    contact_thresh_mm: float = 50.0,
+    variance_drop_pct: float = 5.0,
+    heatmap_downsample: int = 1,
+    heatmap_cmap: str = "viridis",
+    title_prefix: Optional[str] = None,
+    save: bool = False,
+    out_dir: Optional[str] = None,
+    legend_outside: bool = True,
+    show_colorbar: bool = True,
+    show_orientation_legends: bool = False,  # NEW: control A/B legends
+    event_indices: Optional[list] = None,  # NEW: select which events to plot
+):
+    """
+    Combined version: all events side-by-side in one figure.
+    Better for comparing events and makes 2-second windows look natural.
+    
+    Args:
+        event_indices: List of event numbers to plot (e.g., [1,2,3]). 
+                      None = plot all events.
+    """
+    # time
+    t_merged_s, _ = _time_from_index_or_col(merged)
+    t_frames_s, _ = _time_from_index_or_col(frames)
+    if t_merged_s.size == 0 or t_frames_s.size == 0:
+        print("[WARN] empty time vectors"); return
+    t_merged_ms = t_merged_s * 1000.0
+
+    # metrics
+    try:
+        comp = compute_com_distance(
+            merged, p1="com1", p2="com2",
+            smooth_window=1, dist_smooth_window=1, return_components=True
+        )
+    except NameError:
+        raise RuntimeError("compute_com_distance(...) not found; import it first.")
+    d3d = comp["dist_mm"].to_numpy(float)
+    com_dz = _com_dz_abs(merged)
+    snout_d, snout_is3d = _snout_dist_3d(merged)
+    snout_dz = _snout_dz_abs(merged)
+
+    # neural + orientation
+    A_full, order, _ = _neuron_matrix(merged, variance_drop_pct)
+    have_neurons = (A_full.size > 0)
+    pitch_a1, yaw_a1 = _pitch_yaw_deg(merged, "a1")
+    pitch_a2, yaw_a2 = _pitch_yaw_deg(merged, "a2")
+
+    # segments
+    segs_fe = _segments_from_mask(mask)
+    if segs_fe.size == 0:
+        print("[INFO] mask has no True segments"); return
+    seg_time_ms = _map_frame_segments_to_time(frames, segs_fe, col="timestamp_ms_mini")
+
+    # style helpers
+    def _light(ax):
+        ax.grid(False)
+        for s in ax.spines.values():
+            s.set_linewidth(0.6); s.set_color("0.5")
+
+    col_dist, col_vert = "C0", "C3"
+    od = out_dir or "."
+
+    # Collect all valid events first
+    event_data = []
+    for k,(t0_ms, t1_ms) in enumerate(seg_time_ms, start=1):
+        if t1_ms < t0_ms: t0_ms, t1_ms = t1_ms, t0_ms
+        i0 = int(np.searchsorted(t_merged_ms, t0_ms, side="left"))
+        i1 = int(np.searchsorted(t_merged_ms, t1_ms, side="right")) - 1
+        i0 = max(0, min(i0, len(t_merged_s)-1))
+        i1 = max(0, min(i1, len(t_merged_s)-1))
+        if i1 <= i0: continue
+
+        seg = slice(i0, i1+1)
+        if not np.any(np.isfinite(d3d[seg])): continue
+        rep_idx = i0 + int(np.nanargmin(d3d[seg]))
+        rep_t = float(t_merged_s[rep_idx])
+        w = _window_bounds(t_merged_s, rep_t, pre_s, post_s)
+
+        tloc = t_merged_s[w] - rep_t
+        d3d_loc, com_dz_loc = d3d[w], com_dz[w]
+        snout_loc, snout_dz_loc = snout_d[w], snout_dz[w]
+
+        if have_neurons:
+            A_loc = A_full[order, w]
+            if heatmap_downsample > 1 and A_loc.shape[1] > 1:
+                step = int(heatmap_downsample)
+                A_plot = A_loc[:, ::step]; t_plot = tloc[::step]
+            else:
+                A_plot, t_plot = A_loc, tloc
+        else:
+            A_plot = np.empty((0, len(tloc))); t_plot = tloc
+
+        event_data.append({
+            'k': k,
+            'w': w,
+            'tloc': tloc,
+            'd3d_loc': d3d_loc,
+            'com_dz_loc': com_dz_loc,
+            'snout_loc': snout_loc,
+            'snout_dz_loc': snout_dz_loc,
+            'A_plot': A_plot,
+            't_plot': t_plot
+        })
+
+    if not event_data:
+        print("[INFO] No valid events to plot"); return
+
+    # ===== FILTER EVENTS if requested =====
+    if event_indices is not None:
+        event_data = [evt for evt in event_data if evt['k'] in event_indices]
+        if not event_data:
+            print(f"[INFO] No events found with indices {event_indices}"); return
+
+    n_events = len(event_data)
+    
+    # ===== COMPUTE GLOBAL COLOR LIMITS for uniform heatmaps =====
+    if have_neurons:
+        all_heatmap_data = [evt['A_plot'] for evt in event_data if evt['A_plot'].size > 0]
+        if all_heatmap_data:
+            global_vmin = min(arr.min() for arr in all_heatmap_data)
+            global_vmax = max(arr.max() for arr in all_heatmap_data)
+            # Make symmetric around zero for z-scored data
+            global_vlim = max(abs(global_vmin), abs(global_vmax))
+            global_vmin, global_vmax = -global_vlim, global_vlim
+        else:
+            global_vmin, global_vmax = -2, 2  # default
+    else:
+        global_vmin, global_vmax = -2, 2
+    
+    # ================= Multi-column figure (all events side-by-side) =================
+    # Each event gets ~4 inches width, making 2s windows look more natural
+    fig_width = min(4 * n_events, 20)  # Cap at 20 inches total
+    fig = plt.figure(figsize=(fig_width, 11))
+    
+    ratios = [2.0, 1.2, 0.9, 1.0, 0.9, 0.9, 0.9]
+    n_rows = len(ratios)
+    
+    # Create grid: n_rows x n_events
+    gs = fig.add_gridspec(nrows=n_rows, ncols=n_events, height_ratios=ratios,
+                         hspace=0.35, wspace=0.25)
+    
+    # Adjust margins
+    fig.subplots_adjust(left=0.08, right=0.96, top=0.94, bottom=0.06)
+
+    # Plot each event in its own column
+    for col_idx, evt in enumerate(event_data):
+        k = evt['k']
+        tloc = evt['tloc']
+        d3d_loc = evt['d3d_loc']
+        com_dz_loc = evt['com_dz_loc']
+        snout_loc = evt['snout_loc']
+        snout_dz_loc = evt['snout_dz_loc']
+        A_plot = evt['A_plot']
+        t_plot = evt['t_plot']
+        w = evt['w']
+        
+        # Create subplots for this column
+        axes = [fig.add_subplot(gs[row, col_idx]) for row in range(n_rows)]
+        ax0, ax1, ax2, ax3, ax4, ax5, ax6 = axes
+
+        # (1) ΔF/F heatmap with UNIFORM colors
+        if A_plot.size > 0 and A_plot.shape[1] == t_plot.shape[0]:
+            pcm = ax0.pcolormesh(
+                t_plot, np.arange(A_plot.shape[0]+1),
+                np.vstack([A_plot, A_plot[-1:]]) if A_plot.shape[0] else np.zeros((1, A_plot.shape[1])),
+                cmap=heatmap_cmap, shading="auto",
+                vmin=global_vmin, vmax=global_vmax  # <-- UNIFORM COLOR SCALE
+            )
+            if col_idx == 0:
+                ax0.set_title(f"Event {k}", fontsize=12, pad=8) #\nNeuron Activity
+            else:
+                ax0.set_title(f"Event {k}", fontsize=12, pad=8)
+            
+            if col_idx == 0:
+                ax0.set_ylabel("Neurons", fontsize=10)
+
+            # Show colorbar on last event only
+            if show_colorbar and col_idx == n_events - 1:
+                cb = fig.colorbar(pcm, ax=ax0, fraction=0.04, pad=0.02)
+                cb.set_label("ΔF/F", rotation=90, fontsize=9)
+                cb.outline.set_linewidth(0.6)
+                cb.ax.tick_params(labelsize=8, width=0.6)
+        else:
+            ax0.text(0.5,0.5,"No data",ha="center",va="center",transform=ax0.transAxes, fontsize=9)
+            ax0.set_title(f"Event {k}", fontsize=12, pad=8)
+        ax0.tick_params(labelbottom=False, labelsize=9); _light(ax0); ax0.axvline(0, lw=1.5, alpha=0.35)
+
+        # (2) COM 3D
+        ax1.plot(tloc, d3d_loc, lw=2.2, color=col_dist)
+        ax1.axhline(approach_thresh_mm, ls="--", lw=1.0, color="0.5")
+        ax1.axhline(contact_thresh_mm,  ls=":",  lw=1.0, color="0.5")
+        if col_idx == 0:
+            ax1.set_ylabel("Distance (mm)", fontsize=10)
+        ax1.tick_params(labelbottom=False, labelsize=9); _light(ax1); ax1.axvline(0, lw=1.5, alpha=0.35)
+
+        # (3) COM |Δz|
+        ax2.plot(tloc, com_dz_loc, lw=2.0, color=col_vert)
+        if col_idx == 0:
+            ax2.set_ylabel("|Δz| (mm)", fontsize=10)
+        ax2.tick_params(labelbottom=False, labelsize=9); _light(ax2); ax2.axvline(0, lw=1.5, alpha=0.35)
+
+        # (4) Snout–snout distance
+        ax3.plot(tloc, snout_loc, lw=2.0, color=col_dist)
+        if col_idx == 0:
+            ax3.set_ylabel("Snout (mm)", fontsize=10)
+        ax3.tick_params(labelbottom=False, labelsize=9); _light(ax3); ax3.axvline(0, lw=1.5, alpha=0.35)
+
+        # (5) Snout |Δz|
+        ax4.plot(tloc, snout_dz_loc, lw=2.0, color=col_vert)
+        if col_idx == 0:
+            ax4.set_ylabel("|Δz| (mm)", fontsize=10)
+        ax4.tick_params(labelbottom=False, labelsize=9); _light(ax4); ax4.axvline(0, lw=1.5, alpha=0.35)
+
+        # (6) Pitch - no legend unless requested
+        ax5.plot(tloc, pitch_a1[w], lw=1.8, label="A" if col_idx==0 else "")
+        ax5.plot(tloc, pitch_a2[w], lw=1.8, label="B" if col_idx==0 else "")
+        if col_idx == 0:
+            ax5.set_ylabel("Pitch (°)", fontsize=10)
+            if show_orientation_legends:
+                ax5.legend(fontsize=8, frameon=False, loc='upper left')
+        ax5.tick_params(labelbottom=False, labelsize=9); _light(ax5); ax5.axvline(0, lw=1.5, alpha=0.35)
+
+        # (7) Yaw - no legend unless requested
+        ax6.plot(tloc, yaw_a1[w],  lw=1.8, label="A" if col_idx==0 else "")
+        ax6.plot(tloc, yaw_a2[w],  lw=1.8, label="B" if col_idx==0 else "")
+        ax6.set_xlabel("Time (s)", fontsize=10)
+        if col_idx == 0:
+            ax6.set_ylabel("Yaw (°)", fontsize=10)
+            if show_orientation_legends:
+                ax6.legend(fontsize=8, frameon=False, loc='upper left')
+        ax6.tick_params(labelsize=9); _light(ax6); ax6.axvline(0, lw=1.5, alpha=0.35)
+
+    if title_prefix:
+        fig.suptitle(title_prefix, fontsize=14, y=0.98)
+
+    if save:
+        os.makedirs(od, exist_ok=True)
+        fig.savefig(os.path.join(od, "all_events_comparison.png"), dpi=300, bbox_inches='tight')
+    
+    plt.show()
+    plt.close(fig)
+
 
 # ==============================================================================
 # Additional helper functions for plot_incident_windows_newset
@@ -2736,7 +3827,26 @@ def _egocentric_bearing_elev(df, animal="a1"):
     return np.full(n, np.nan), np.full(n, np.nan)
 
 def _pitch_yaw_deg(df, animal="a1"):
-    """Compute pitch and yaw angles."""
-    # Simplified - returns NaN arrays if columns missing  
+    """
+    Head orientation from a simple head axis: SpineF (#4) → Snout (#3).
+    Pitch: angle of that axis vs horizontal plane (deg).
+    Yaw: angle of XY projection (deg).
+    """
     n = len(df)
-    return np.full(n, np.nan), np.full(n, np.nan)
+    need = [f"kp4_x_{animal}", f"kp4_y_{animal}", f"kp4_z_{animal}",
+            f"kp3_x_{animal}", f"kp3_y_{animal}", f"kp3_z_{animal}"]
+    if not all(c in df.columns for c in need):
+        return np.full(n, np.nan), np.full(n, np.nan)
+
+    x4 = df[f"kp4_x_{animal}"].to_numpy(float)
+    y4 = df[f"kp4_y_{animal}"].to_numpy(float)
+    z4 = df[f"kp4_z_{animal}"].to_numpy(float)
+    x3 = df[f"kp3_x_{animal}"].to_numpy(float)
+    y3 = df[f"kp3_y_{animal}"].to_numpy(float)
+    z3 = df[f"kp3_z_{animal}"].to_numpy(float)
+
+    vx, vy, vz = (x3 - x4), (y3 - y4), (z3 - z4)           # SpineF→Snout
+    hyp = np.hypot(vx, vy)
+    pitch = np.degrees(np.arctan2(vz, hyp))                # +up/-down
+    yaw   = np.degrees(np.arctan2(vy, vx))                 # global XY
+    return pitch, yaw
