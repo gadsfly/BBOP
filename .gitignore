@@ -1,0 +1,24 @@
+__pycache__/
+*.mp4
+/home/lq53/mir_repos/BBOP/random_tests/25may_v1_FOV/all_data_250520_20sets.csv
+*.json
+*.csv
+*.png
+random_tests/25may_mini/large/*.ipynb
+/home/lq53/mir_repos/BBOP/random_tests/25may_mini/scan_250325_miniparam_2.ipynb
+random_tests/25may_mini/scan_250325_miniparam_2.ipynb
+random_tests/25may_mini/scan_250325_miniparam_2.ipynb
+/home/lq53/mir_repos/BBOP/random_tests/25may_mini/scan_250619_cleaned_miniparam_2.ipynb
+/home/lq53/mir_repos/BBOP/random_tests/25may_mini/large/
+random_tests/25may_mini/large/scan_250325_miniparam_2.ipynb
+random_tests/25may_mini/large/scan_250325_miniparam_2 copy 2.ipynb
+/home/lq53/mir_repos/BBOP/random_tests/25may_mini/large/scan_250325_miniparam_2_copy2.ipynb
+/home/lq53/mir_repos/BBOP/random_tests/25may_mini/large/
+random_tests/25may_mini/large/scan_250325_miniparam_2_copy2.ipynb
+random_tests/25may_mini/large/scan_250325_miniparam_2_copy2.ipynb
+/home/lq53/mir_repos/BBOP/random_tests/25may_mini/large/scan_250325_miniparam_2_copy.ipynb
+**/useless/**
+
+random_tests/25Sep_posters/all_labeled_clusters.svg
+random_tests/25Sept_calib_intrinsic_update/mir_repos_calib.code-workspace
+random_tests/25may_mini/large/scan_250325_miniparam_2_copy.ipynb
