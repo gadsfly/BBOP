@@ -2,6 +2,9 @@
 requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = ["utlis", "status_fields"]
+
 [project]
 name = "bbop"
 version = "0.1.0"
