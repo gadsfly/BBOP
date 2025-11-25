@@ -1,3 +1,5 @@
+import shutil
+import os
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -5,9 +7,10 @@ import os
 import subprocess
 import scipy.io
 import pandas as pd
+import time
 
 #updated below function so that it will only take in the first 3 min for calculations...
-def calculate_frame_brightness(video_path, max_frames):
+def calculate_frame_brightness(video_path, max_frames, min_frames):
     # Open the video file
     cap = cv2.VideoCapture(video_path)
     
@@ -15,20 +18,35 @@ def calculate_frame_brightness(video_path, max_frames):
     frame_number = 0
     # max_frames = 500
     
+    # while frame_number < max_frames:
+    #     ret, frame = cap.read()
+    #     if not ret:
+    #         break
+        
+    #     # Convert frame to grayscale
+    #     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+    #     # Calculate the average brightness
+    #     avg_brightness = np.mean(gray_frame)
+    #     frame_brightness.append(avg_brightness)
+        
+    #     frame_number += 1
     while frame_number < max_frames:
         ret, frame = cap.read()
         if not ret:
             break
+
+        # Only process frames within the specified range
+        if frame_number >= min_frames:
+            # Convert frame to grayscale
+            gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            
+            # Calculate the average brightness
+            avg_brightness = np.mean(gray_frame)
+            frame_brightness.append(avg_brightness)
         
-        # Convert frame to grayscale
-        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame_number += 1  
         
-        # Calculate the average brightness
-        avg_brightness = np.mean(gray_frame)
-        frame_brightness.append(avg_brightness)
-        
-        frame_number += 1
-    
     cap.release()
     return frame_brightness
 
@@ -39,34 +57,57 @@ def find_brightness_drop(brightness_values, threshold):
             drops.append(i)
     return drops
 
-def process_videos(base_path, cameras, threshold, max_frames):
+def process_videos(base_path, cameras, threshold, max_frames, min_frame):
     drop_frames = {}
     for camera in cameras:
         video_path = os.path.join(base_path, camera, '0.mp4')
-        brightness_values = calculate_frame_brightness(video_path, max_frames)
+        try:
+            # Process the video file and calculate brightness
+            brightness_values = calculate_frame_brightness(video_path, max_frames, min_frame)
+
+            # Find frames where brightness drops significantly
+            drop_frame = find_brightness_drop(brightness_values, threshold)
+            if drop_frame is not None:
+                drop_frames[camera] = drop_frame
+            else:
+                print(f"No significant drop found in first 3 min in {video_path}")
+            
+        except Exception as e:
+            print(f"Error processing {video_path}: {e}")
+            continue  # Skip to the next camera
+        # brightness_values = calculate_frame_brightness(video_path, max_frames)
         
-        drop_frame = find_brightness_drop(brightness_values, threshold)
-        if drop_frame is not None:
-            drop_frames[camera] = drop_frame
-        else:
-            print(f"No significant drop found in first 3 min in {video_path}")
+        # drop_frame = find_brightness_drop(brightness_values, threshold)
+        # if drop_frame is not None:
+        #     drop_frames[camera] = drop_frame
+        # else:
+        #     print(f"No significant drop found in first 3 min in {video_path}")
 
         plt.plot(brightness_values, label=camera)
+        # time.sleep(1)
     
     plt.title('Frame Brightness Over Time')
     plt.xlabel('Frame Number, first 3 min')
     plt.ylabel('Average Brightness')
     plt.legend()
-    plt.show()
     
+
     # print(drop_frames)
+
+    # Save the figure to base_path
+    save_path = os.path.join(base_path, "6cam_sync.png")
+    plt.savefig(save_path)
+    print(f"Saved brightness plot to {save_path}")
+    
+    plt.show()
+    plt.close()  # Closes the figure to free memory
 
     return drop_frames
 
 
 def find_min_frame(dtf):
-    # if 
-    min_frame = min([frame[0] for frame in dtf.values()])
+    min_frame = min(dtf.values()) 
+    # min_frame = min([frame[0] for frame in dtf.values()])
     return min_frame
 
 def align_frames(calib_file, light_change_frames, save_path):
@@ -82,33 +123,68 @@ def align_frames(calib_file, light_change_frames, save_path):
     """
     calib_data = scipy.io.loadmat(calib_file)
     sync = calib_data['sync']
-    
+    # import pdb
+    # pdb.set_trace()
+
 
 
     camera_keys = list(light_change_frames.keys())
-    min_frame = find_min_frame(light_change_frames)
-    # print(min_frame)
 
-    adjusted_data_frames = {}
+    processed_drop_frames = {}
+
     for cam_key in camera_keys:
+        drop_frames = light_change_frames[cam_key]
+        
+        if len(drop_frames) > 1:
+            # Get the difference between consecutive frames
+            dif = abs(drop_frames[1] - drop_frames[0])
+            
+            if dif < 2:
+                # If the difference is small, use the second frame as the drop frame
+                processed_drop_frames[cam_key] = drop_frames[1]
+            else:
+                # If there is more than one drop frame and the difference is large, raise a warning
+                print(f"Warning: Lighting detected for more than 2 frames in {cam_key}, needs specific attention.")
+                processed_drop_frames[cam_key] = min(drop_frames)  # Choose the minimum frame as a fallback
+        else:
+            # If there is only one drop frame, use that one
+            processed_drop_frames[cam_key] = drop_frames[0]
+
+    # Print or return the processed drop frames
+    print("Processed drop frames:", processed_drop_frames)
+
+                
+    min_frame = find_min_frame(processed_drop_frames)
+    print(min_frame)
+
+    # adjusted_data_frames = {}
+    for cam_key in camera_keys:
+
         cam_idx = camera_keys.index(cam_key)
         keyyyyy = 'data_frame'  # Assuming this is the key for data frames in your structure
+        # print(1)
+        # import pdb
+        # pdb.set_trace()
+
+        # print(sync[cam_idx][0][keyyyyy])
         data_frame = sync[cam_idx][0][keyyyyy][0][0][0]
+        # print(2)
         # print(data_frame)
         # print(sync[cam_idx][0][keyyyyy])
-        
+
         # Convert to DataFrame for easier manipulation
         df = pd.DataFrame(data_frame)
-        
+        # print(3)
         # Adjust frames
-        frames_to_remove = light_change_frames[cam_key][0] - min_frame
+        frames_to_remove = processed_drop_frames[cam_key] - min_frame #[0], okay now not just takikng the first thing after some procesing, very cool
         if frames_to_remove > 0:
             df = df.iloc[frames_to_remove:].reset_index(drop=True)
-        
+        # print(4)
         # print(df.to_numpy().flatten())
         # adjusted_data_frames[cam_key] = df
         # sync[cam_idx][0][keyyyyy][0][0][0] = None
         sync[cam_idx][0][keyyyyy][0][0] = [df.to_numpy().flatten()]
+        # print(5)
         # print(sync[cam_idx][0][keyyyyy])
     # return sync[cam_idx][0][keyyyyy][0][0]
     calib_data['sync'] = sync
@@ -123,24 +199,138 @@ def find_calib_file(base_folder):
     return None
 
 
-def process_sync(base_folder, threshold=3, max_frames=100):
+def is_video_valid(video_path):
+    """
+    Checks if the video file is valid and not corrupted.
+    Specifically looks for moov atom errors.
+    """
+    try:
+        import subprocess
+        # Use ffmpeg to check for moov atom presence
+        result = subprocess.run(
+            ['ffmpeg', '-v', 'error', '-i', video_path, '-map', '0:1', '-f', 'null', '-'],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        if 'moov atom not found' in result.stderr.decode('utf-8'):
+            print(f'{video_path} video dead')
+            return False
+        return True
+    except Exception as e:
+        print(f"Error checking video validity: {e}")
+        return False
+    
+
+# def process_sync(base_folder, threshold=3, max_frames=100):
+#     # note that base_folder means rec_folder, 
+#     # rec folder need to be jointed together before calling this function
+#     # note that this will take whaever's already in label3d_dannce.mat, 
+#     # after mir_generate_param
+#     cameras = [f'Camera{i}' for i in range(1, 7)]
+#     vi_path = os.path.join(base_folder, 'videos')
+
+#     calib_file = find_calib_file(base_folder)
+    
+#     if calib_file is None:
+#         print('no calib file after mir_generate_param is found. please generate it first.')
+#         return
+
+#     try:
+#         drop_frames = process_videos(vi_path, cameras, threshold, max_frames)
+#         print(f"Detected intensity drop frames in {base_folder}:", drop_frames)
+#     except Exception as e:
+#         print(f"Error processing videos in {base_folder}: {e}")
+#         print(f"Skipping video processing for {base_folder}")
+#         return base_folder
+    
+#         # Check if any frames are missing
+#     if any(len(frames) == 0 for frames in drop_frames.values()):
+#         print(f"Skipping process_calibration_data for {base_folder} due to missing drop frames")
+#         return base_folder
+#     # drop_frames = process_videos(vi_path, cameras, threshold, max_frames)
+#     # print(f"Detected intensity drop frames in {base_folder}:", drop_frames)
+#     # if any(len(frames) == 0 for frames in drop_frames.values()):
+#     #     print(f"Skipping process_calibration_data for {base_folder} due to missing drop frames")
+#     #     return base_folder
+    
+#     calib_nammm = os.path.basename(calib_file)
+#     folder_name = os.path.basename(base_folder)
+#     save_path = os.path.join(base_folder,f'df_synced_{folder_name}_{calib_nammm}')
+
+#     # Align frames and process calibration data
+#     try:
+#         align_frames(calib_file, drop_frames, save_path)
+#         print(f"Alignment successful for {base_folder}")
+
+#         prev_calib_folder = os.path.join(base_folder, 'prev_calib')
+#         os.makedirs(prev_calib_folder, exist_ok=True)
+#         shutil.move(calib_file, prev_calib_folder)
+#         print(f"Moved prior calibration file to {prev_calib_folder}")
+
+#     except Exception as e:
+#         print(f"Error during alignment: {e}")
+#         return
+
+
+# this process_sync works well, however, it is not getting the calib when there is a missing camera.
+def process_sync(base_folder, threshold=3, max_frames=100, min_frame=0):
     # note that base_folder means rec_folder, 
     # rec folder need to be jointed together before calling this function
-    # note that this will take whaever's already in label3d_dannce.mat, 
+    # note that this will take whatever's already in label3d_dannce.mat, 
     # after mir_generate_param
     cameras = [f'Camera{i}' for i in range(1, 7)]
     vi_path = os.path.join(base_folder, 'videos')
-    drop_frames = process_videos(vi_path, cameras, threshold, max_frames)
-    print(f"Detected intensity drop frames in {base_folder}:", drop_frames)
-    if any(len(frames) == 0 for frames in drop_frames.values()):
-        print(f"Skipping process_calibration_data for {base_folder} due to missing drop frames")
-        return base_folder
-
-
 
     calib_file = find_calib_file(base_folder)
-    calib_nammm = os.path.basename(calib_file)
-    folder_name = os.path.basename(base_folder)
-    save_path = os.path.join(base_folder,f'df_synced_{folder_name}_{calib_nammm}')
     
-    align_frames(calib_file, drop_frames, save_path)
+    if calib_file is None:
+        print('No calib file after mir_generate_param is found. Please generate it first.')
+        return
+    
+    if os.path.basename(calib_file).startswith('df_'):
+        print(f"Calibration file {calib_file} already has 'df_' prefix. Skipping processing.")
+        return False
+
+    # Check for corrupted video files
+    for camera in cameras:
+        video_file = os.path.join(vi_path, f'{camera}.mp4')
+        if not is_video_valid(video_file):
+            print(f"Skipping {camera} video in {base_folder}: moov atom not found or file is corrupted.")
+            return   # Skip processing this folder
+        # time.sleep(1)
+
+    try:
+        drop_frames = process_videos(vi_path, cameras, threshold, max_frames, min_frame)
+        print(f"Detected intensity drop frames in {base_folder}:", drop_frames)
+        time.sleep(1)
+    except Exception as e:
+        print(f"Error processing videos in {base_folder}: {e}")
+        print(f"Skipping video processing for {base_folder}")
+        return False
+    
+    # Check if any frames are missing
+    if any(len(frames) == 0 for frames in drop_frames.values()):
+        print(f"Skipping process_calibration_data for {base_folder} due to missing drop frames")
+        return False
+    
+    calib_nammm = os.path.basename(calib_file)
+
+    # folder_name = os.path.basename(base_folder)
+
+    save_path = os.path.join(base_folder, f'df_synced_{calib_nammm}')
+
+    # Align frames and process calibration data
+    try:
+        align_frames(calib_file, drop_frames, save_path)
+        print(f"Alignment successful for {base_folder} with {calib_file} ")
+
+        prev_calib_folder = os.path.join(base_folder, 'prev_calib')
+        os.makedirs(prev_calib_folder, exist_ok=True)
+        shutil.move(calib_file, prev_calib_folder)
+        print(f"Moved prior calibration file {calib_file} to {prev_calib_folder}")
+        return True
+        # time.sleep(1)
+
+    except Exception as e:
+        print(f"Error during alignment: {e}")
+        return False
+    
