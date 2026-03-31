@@ -9,6 +9,7 @@ from utlis.exe_engine_utlis.mir_generate_param_modu import mir_generate_param_z
 # from utlis.sync_utlis.sync_df_utlis import process_sync
 from utlis.exe_engine_utlis.exe_single_utlis import rerun_with_prev_calib
 from utlis.exe_engine_utlis.dead_cam_rescue import detect_missing_cameras, rescue_missing_cameras
+from utlis.exe_engine_utlis.drop_frame_handler import process_drop_frames
 from concurrent.futures import ThreadPoolExecutor
 
 # Function to process each "unit" (rec_file) and update its status in the corresponding Parquet file
@@ -267,14 +268,51 @@ def sequential_process_and_update_dead_cam_rescue(filtered_table, base_folder):
             print(f"[dead_cam_rescue] Error: {e}")
 
 
+# ── Drop-frame handler (runs after sync) ──
+
+def process_unit_and_update_status_dropf_handle(rec_file_data, base_folder):
+    """Detect & fix dropped frames for a single session, update parquet."""
+    date_folder = rec_file_data['date_folder']
+    rec_file = rec_file_data['rec_file']
+    combined_path = os.path.join(base_folder, date_folder, rec_file)
+
+    print(f"[dropf_handle] Processing: {combined_path}")
+    result = process_drop_frames(combined_path)
+
+    if result is None:
+        # Consistent frames or already handled → mark done
+        _update_dropf_handle_parquet(base_folder, date_folder, rec_file, '1')
+    elif result is True:
+        _update_dropf_handle_parquet(base_folder, date_folder, rec_file, '1')
+        print(f"[dropf_handle] Fixed dropped frames in {combined_path}")
+    else:
+        _update_dropf_handle_parquet(base_folder, date_folder, rec_file, '3')
+        print(f"[dropf_handle] FAILED for {combined_path}")
 
 
+def _update_dropf_handle_parquet(base_folder, date_folder, rec_file, value):
+    """Update the dropf_handle field in folder_log.parquet."""
+    parquet_file_path = os.path.join(base_folder, date_folder, rec_file, "folder_log.parquet")
+    try:
+        table = pq.read_table(parquet_file_path)
+        df = table.to_pandas()
+    except FileNotFoundError:
+        print(f"Parquet file not found at {parquet_file_path}")
+        return
+    df['dropf_handle'] = str(value)
+    df['scan_time'] = datetime.datetime.now().isoformat()
+    updated_table = pa.Table.from_pandas(df)
+    pq.write_table(updated_table, parquet_file_path)
 
 
-
-
-
-
+def sequential_process_and_update_dropf_handle(filtered_table, base_folder):
+    """Iterate filtered table and fix dropped frames for each session."""
+    filtered_df = filtered_table.to_pandas()
+    for _, row in filtered_df.iterrows():
+        try:
+            process_unit_and_update_status_dropf_handle(row.to_dict(), base_folder)
+        except Exception as e:
+            print(f"[dropf_handle] Error: {e}")
 
 
 def dispatch_slurm_jobs(
