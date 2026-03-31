@@ -1,0 +1,316 @@
+import sys
+import os
+sys.path.append(os.path.abspath('..'))
+from utlis.scan_engine_utlis.scan_engine_utlis import is_special_date
+
+
+def _has_sorted_pose3d(subfolder_path, require_manual_fix=False):
+    """Check pose2d_tracking/*/ subfolders for sorted_pose3d*.mat files.
+    
+    If require_manual_fix=True, only matches files containing 'manual_fix'.
+    Searches all model subdirectories under pose2d_tracking/.
+    """
+    p2d = os.path.join(subfolder_path, 'pose2d_tracking')
+    if not os.path.isdir(p2d):
+        return False
+    for model_dir in os.listdir(p2d):
+        model_path = os.path.join(p2d, model_dir)
+        if not os.path.isdir(model_path):
+            continue
+        for f in os.listdir(model_path):
+            if not (f.startswith('sorted_pose3d') and f.endswith('.mat')):
+                continue
+            if require_manual_fix:
+                if 'manual_fix' in f:
+                    return True
+            else:
+                return True
+    return False
+
+
+# Extended from status_fields_config_oct3v1_brws_250525.py
+# Added: dead_cam field for dead-camera rescue tracking
+# Added: social_pred field for social prediction tracking
+
+STATUS_FIELDS_CONFIG = {
+    'mir_generate_param': {
+        'default': 0,
+        'conditions': [
+            { 
+                'condition': lambda **kwargs: kwargs['calib_file'] is not None,
+                'value': 1  # YES
+            },
+            {
+                'condition': lambda **kwargs: kwargs['calib_file'] is not None,
+                'value': 1  # YES
+            }
+        ]
+    },
+    'sync': {
+        'default': 0,  # Default NO
+        'conditions': [
+            {
+                'condition': lambda **kwargs: kwargs['calib_file'] and os.path.basename(kwargs['calib_file']).startswith("df_") and kwargs['calib_file'].endswith("label3d_dannce.mat"),
+                'value': 1  # YES
+            },
+            {
+                'condition': lambda **kwargs: kwargs['subfolder_path'] in kwargs['failed_paths'],
+                'value': 3  # FAILED
+            }
+        ]
+    },
+
+    "mini_6cam_map": { # note this thing is just to find out if there is mapping or not 
+        "default": 0,  # NO
+        "conditions": [
+            {
+                # YES if a sync_to_mini_path.txt lives directly in the subfolder
+                "condition": lambda **kwargs: os.path.isfile(
+                    os.path.join(kwargs["subfolder_path"], "sync_to_mini_path.txt")
+                ),
+                "value": 1
+            },
+            {
+                # (Optional) mark FAILED if this subfolder was in failed_paths
+                "condition": lambda **kwargs: kwargs["subfolder_path"] in kwargs.get("failed_paths", []),
+                "value": 3
+            }
+        ]
+    },
+
+    
+    'dropf_handle': {
+        'default': 0,  # Default NO
+        'conditions': [
+            {
+                'condition': lambda **kwargs: kwargs.get('calib_file') and os.path.basename(kwargs['calib_file']).startswith("df_dh_") and kwargs['calib_file'].endswith("label3d_dannce.mat"),
+                'value': 1  # YES
+            },
+            {
+                'condition': lambda **kwargs: kwargs.get('subfolder_path') in kwargs.get('failed_paths', []),
+                'value': 3  # FAILED
+            },
+            {
+                'condition': lambda **kwargs: kwargs.get('date_folder') and kwargs['date_folder'] <= '2024_11_01' and not (
+                    kwargs.get('calib_file') and os.path.basename(kwargs['calib_file']).startswith("df_dh_") and kwargs['calib_file'].endswith("label3d_dannce.mat")
+                ),
+                'value': 2  # NO NEED
+            }
+        ]
+    },
+
+
+    'com': {
+        'default': 0,  # Default NO
+        'conditions': [
+            {
+                'condition': lambda **kwargs: os.path.exists(os.path.join(kwargs['subfolder_path'], 'COM/predict00')) and
+                                               any(f.startswith('com3d') and f.endswith('.mat')
+                                                   for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'COM/predict00'))),
+                'value': 1  # YES
+            }
+        ]
+    },
+
+    'com_vis': {
+    'default': 0,  # Default NO
+    'conditions': [
+        {
+            'condition': lambda **kwargs: os.path.exists(os.path.join(kwargs['subfolder_path'], 'COM/predict00/vis')) and
+                                           any(f.endswith('.jpg')
+                                               for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'COM/predict00/vis'))),
+            'value': 1  # YES
+        }
+    ]
+},
+
+    'social': {
+        'default': 0,
+        'conditions': [
+            {
+                'condition': lambda **kwargs: 'social' in kwargs['subfolder_path'].lower(),
+                'value': 1  # Set to 1 if "social" is in the path
+            },
+            {
+                'condition': lambda **kwargs: 'mini_p' in kwargs['subfolder_path'].lower(),
+                'value': 1  # Set to 1 if "social" is in the path
+            },
+            {
+                'condition': lambda **kwargs: '2mice' in kwargs['subfolder_path'].lower(),
+                'value': 1  # Set to 1 if "social" is in the path
+            },
+                        {
+                'condition': lambda **kwargs: '_p' in kwargs['subfolder_path'].lower(),
+                'value': 1  # Set to 1 if "social" is in the path
+            },
+                        {
+                'condition': lambda **kwargs: '2male_mice' in kwargs['subfolder_path'].lower(),
+                'value': 1  # Set to 1 if "social" is in the path
+            },   
+        ]
+    },
+    'miniscope': {
+        'default': 0,
+        'conditions': [
+            {
+                'condition': lambda **kwargs: 'mini' in kwargs['subfolder_path'].lower(),
+                'value': 1  # Set to 1 if "mini" is in the path
+            },
+
+            {
+                'condition': lambda **kwargs: any(
+                    term in kwargs['subfolder_path'].lower() for term in ['pmc', 'v1'] #somtimes this is wrong because sometims i am just running the animal for testing.
+                ),
+                'value': 1
+            }
+            
+        ]
+    },
+    'test': {
+        'default': 0,
+        'conditions': [
+            {
+                'condition': lambda **kwargs: 'test' in kwargs['subfolder_path'].lower(),
+                'value': 1  # Set to 1 if "test" is in the path
+            }
+        ]
+    },
+    'after_oxytocin': {
+        'default': 0,
+        'conditions': [
+            {
+                'condition': lambda **kwargs: 'AO' in kwargs['subfolder_path'].upper(),
+                'value': 1  # Set to 1 if "AO" is in the path
+            }
+        ]
+    },
+    'before_oxytocin': {
+        'default': 0,
+        'conditions': [
+            {
+                'condition': lambda **kwargs: 'BO' in kwargs['subfolder_path'].upper(),
+                'value': 1  # Set to 1 if "BO" is in the path
+            }
+        ]
+    },
+
+    'dannce': {
+        'default': 0,  # Default NO
+        'conditions': [
+            {
+                'condition': lambda **kwargs: os.path.exists(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00')) and
+                                            any(f == 'save_data_AVG.mat' for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00'))),
+                'value': 1  # YES
+            }
+        ]
+    },
+
+    'dannce_vis': {
+    'default': 0,  # Default NO
+    'conditions': [
+        {
+            'condition': lambda **kwargs: os.path.exists(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00/vis')) and
+                                           any(f.endswith('.jpg')
+                                               for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'DANNCE/predict00/vis'))),
+            'value': 1  # YES
+        }
+    ]
+},
+
+
+
+    'mini_rec_sync':{
+        'default': 0,  # Default value when neither file is found
+        'conditions': [
+            {
+                'condition': lambda **kwargs: os.path.exists(
+                    os.path.join(kwargs['subfolder_path'], 'MIR_Aligned')) and any(f.startswith('aligned_predictions_with_ca_and_dF_F') and f.endswith('.h5') for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'MIR_Aligned'))
+                ),
+                'value': 1  # Set to 1 if the _and_dF_F file exists
+            },
+            {
+                'condition': lambda **kwargs: os.path.exists(
+                    os.path.join(kwargs['subfolder_path'], 'MIR_Aligned', 'aligned_predictions_with_ca.h5')
+                ),
+                'value': 0.5  # Set to 0.5 if the basic file exists
+            }
+        ]
+    },
+
+
+        'mini_rec_sync_com':{
+        'default': 0,  # Default value when neither file is found
+        'conditions': [
+            {
+                'condition': lambda **kwargs: os.path.exists(
+                    os.path.join(kwargs['subfolder_path'], 'MIR_Aligned')) and any(f.startswith('only_com') and f.endswith('.h5') for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'MIR_Aligned'))
+                ),
+                'value': 1  # Set to 1 if the _and_dF_F file exists
+            },
+            {
+                'condition': lambda **kwargs: os.path.exists(
+                    os.path.join(kwargs['subfolder_path'], 'MIR_Aligned', 'aligned_predictions_with_ca.h5')
+                ),
+                'value': 0.5  # Set to 0.5 if the basic file exists
+            }
+        ]
+    },
+
+    # Social prediction from pose2d_tracking pipeline
+    # 0   = no prediction found
+    # 0.5 = auto prediction (sorted_pose3d*.mat exists in any model subfolder)
+    # 1   = manually adapted prediction (sorted_pose3d*manual_fix*.mat exists)
+    'social_pred': {
+        'default': 0,
+        'conditions': [
+            {
+                # 0.5: any sorted_pose3d*.mat in any pose2d_tracking subfolder
+                'condition': lambda **kwargs: _has_sorted_pose3d(kwargs['subfolder_path'], require_manual_fix=False),
+                'value': 0.5
+            },
+            {
+                # 1: manually fixed prediction exists — overwrites 0.5 if both match
+                'condition': lambda **kwargs: _has_sorted_pose3d(kwargs['subfolder_path'], require_manual_fix=True),
+                'value': 1
+            },
+        ]
+    },
+
+    # dead_cam: track dead-camera rescue status
+    # 0 = dead camera detected, not yet rescued
+    # 1 = all cameras present (no dead cam)
+    # 2 = dead camera detected and rescued successfully
+    # 3 = rescue failed
+    'dead_cam': {
+        'default': 1,  # assume all cameras present by default
+        'conditions': [
+            {
+                # rescued: clonedMissing_ mat file exists (rescue was performed)
+                'condition': lambda **kwargs: any(
+                    f.startswith('clonedMissing_') and f.endswith('label3d_dannce.mat')
+                    for f in os.listdir(kwargs['subfolder_path'])
+                ),
+                'value': 2  # rescued
+            },
+            {
+                # Also detect rescued files in prev_calib (after sync moves them)
+                'condition': lambda **kwargs: os.path.isdir(os.path.join(kwargs['subfolder_path'], 'prev_calib')) and any(
+                    f.startswith('clonedMissing_') and f.endswith('label3d_dannce.mat')
+                    for f in os.listdir(os.path.join(kwargs['subfolder_path'], 'prev_calib'))
+                ),
+                'value': 2  # rescued (file was moved to prev_calib by sync)
+            },
+            {
+                # dead camera detected but not rescued: any Camera{i} folder missing metadata.csv
+                'condition': lambda **kwargs: (
+                    os.path.isdir(os.path.join(kwargs['subfolder_path'], 'videos')) and
+                    any(
+                        not os.path.isfile(os.path.join(kwargs['subfolder_path'], 'videos', f'Camera{i}', 'metadata.csv'))
+                        for i in range(1, 7)
+                    )
+                ),
+                'value': 0  # dead cam, not rescued
+            },
+        ]
+    },
+}

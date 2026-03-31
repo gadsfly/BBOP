@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath('../..'))
 from utlis.exe_engine_utlis.mir_generate_param_modu import mir_generate_param_z
 # from utlis.sync_utlis.sync_df_utlis import process_sync
 from utlis.exe_engine_utlis.exe_single_utlis import rerun_with_prev_calib
+from utlis.exe_engine_utlis.dead_cam_rescue import detect_missing_cameras, rescue_missing_cameras
 from concurrent.futures import ThreadPoolExecutor
 
 # Function to process each "unit" (rec_file) and update its status in the corresponding Parquet file
@@ -61,7 +62,7 @@ def process_unit_and_update_status_mirgenparam(
     base_folder,
     calib_folder_name: str = "calib_before",  # <-- now configurable
     out_folder = False, 
-    out_folder_name = "calib_newintrinsics"  # <-- now configurable
+    out_folder_name = None #"calib_newintrinsics"  # <-- now configurable
 ):
     date_folder = rec_file_data['date_folder']
     rec_file = rec_file_data['rec_file']
@@ -130,7 +131,7 @@ def process_unit_and_update_status_mirgenparam(
 
 
 # Function to handle sequential processing and status updates
-def sequential_process_and_update_mirgenparam(filtered_table, base_folder, calib_folder_name, out_folder=False, out_folder_name="calib_newintrinsics"):
+def sequential_process_and_update_mirgenparam(filtered_table, base_folder, calib_folder_name="calib_before", out_folder=False, out_folder_name=None):
     # Convert PyArrow table to pandas DataFrame
     filtered_df = filtered_table.to_pandas()
 
@@ -207,6 +208,63 @@ def sequential_process_and_update_sync(filtered_table, base_folder, threshold=2,
     
     for _, row in filtered_df.iterrows():
         process_unit_and_update_status_sync(row.to_dict(), base_folder,threshold, max_frames, min_frame)
+
+
+# ── Dead-camera rescue (runs between mir_generate_param and sync) ──
+
+def process_unit_and_update_status_dead_cam_rescue(rec_file_data, base_folder):
+    """Detect & rescue dead cameras for a single session, update parquet."""
+    date_folder = rec_file_data['date_folder']
+    rec_file = rec_file_data['rec_file']
+    combined_path = os.path.join(base_folder, date_folder, rec_file)
+
+    present, missing = detect_missing_cameras(combined_path)
+    if not missing:
+        print(f"[dead_cam_rescue] All 6 cameras present in {combined_path}, skipping.")
+        _update_dead_cam_parquet(base_folder, date_folder, rec_file, '1')  # 1 = no dead cam
+        return
+
+    print(f"[dead_cam_rescue] Dead cameras {missing} in {combined_path}, rescuing...")
+    try:
+        result = rescue_missing_cameras(combined_path, verify=True)
+
+        if not result['params_verified']:
+            print(f"[dead_cam_rescue] WARNING: param verification failed: {result['param_diffs']}")
+        if not result['videos_verified']:
+            print(f"[dead_cam_rescue] WARNING: video verification failed: {result['video_diffs']}")
+
+        _update_dead_cam_parquet(base_folder, date_folder, rec_file, '2')  # 2 = dead cam rescued
+        print(f"[dead_cam_rescue] Rescued cameras {missing} using donor Camera{result['donor']}")
+
+    except Exception as e:
+        print(f"[dead_cam_rescue] FAILED for {combined_path}: {e}")
+        _update_dead_cam_parquet(base_folder, date_folder, rec_file, '3')  # 3 = rescue failed
+
+
+def _update_dead_cam_parquet(base_folder, date_folder, rec_file, dead_cam_value):
+    """Update the dead_cam field in folder_log.parquet."""
+    parquet_file_path = os.path.join(base_folder, date_folder, rec_file, "folder_log.parquet")
+    try:
+        table = pq.read_table(parquet_file_path)
+        df = table.to_pandas()
+    except FileNotFoundError:
+        print(f"Parquet file not found at {parquet_file_path}")
+        return
+
+    df['dead_cam'] = str(dead_cam_value)  # 0=dead not fixed, 1=no dead cam, 2=rescued, 3=failed
+    df['scan_time'] = datetime.datetime.now().isoformat()
+    updated_table = pa.Table.from_pandas(df)
+    pq.write_table(updated_table, parquet_file_path)
+
+
+def sequential_process_and_update_dead_cam_rescue(filtered_table, base_folder):
+    """Iterate filtered table and rescue dead cameras for each session."""
+    filtered_df = filtered_table.to_pandas()
+    for _, row in filtered_df.iterrows():
+        try:
+            process_unit_and_update_status_dead_cam_rescue(row.to_dict(), base_folder)
+        except Exception as e:
+            print(f"[dead_cam_rescue] Error: {e}")
 
 
 
