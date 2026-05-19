@@ -22,6 +22,7 @@ dependencies = [
     "matplotlib>=3.9.0",
     "seaborn>=0.13.0",
     "opencv-python>=4.10.0",  # py-opencv in conda
+    "imageio>=2.36.0",
     "h5py>=3.12.0",
     "tables>=3.9.0",  # pytables in conda
     "networkx>=3.2.0",
@@ -40,4 +41,7 @@ dev = [
     "jupyter>=1.0.0",
     "jupyterlab>=4.1.0",
     "ipython>=8.18.0",
+]
+video = [
+    "imageio-ffmpeg>=0.4.9",
 ]
