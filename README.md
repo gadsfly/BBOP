@@ -9,7 +9,38 @@ Calibration is done from [newsdannce](https://github.com/tdunnlab/newsdannce). R
 
 ## Installation
 
-We recommend installing BBOP using the following steps:
+For normal use, install BBOP as a package from GitHub:
+
+```bash
+pip install "git+https://github.com/gadsfly/BBOP.git@main"
+```
+
+To install a specific branch while testing:
+
+```bash
+pip install "git+https://github.com/gadsfly/BBOP.git@public-installability-260519"
+```
+
+For video-writing helpers, install the optional video extra:
+
+```bash
+pip install "bbop[video] @ git+https://github.com/gadsfly/BBOP.git@main"
+```
+
+For local release-style testing, build and install a wheel in a temporary
+environment:
+
+```bash
+python -m venv /tmp/bbop-install-test
+/tmp/bbop-install-test/bin/python -m pip install build wheel setuptools
+
+cd BBOP
+/tmp/bbop-install-test/bin/python -m build --wheel --outdir /tmp/bbop-dist
+/tmp/bbop-install-test/bin/python -m pip install /tmp/bbop-dist/bbop-*.whl
+/tmp/bbop-install-test/bin/python -m pip check
+```
+
+For development inside a cloned repo, use an editable install:
 
 ```bash
 # Clone the repository
