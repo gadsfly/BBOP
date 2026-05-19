@@ -2,8 +2,11 @@
 requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["utlis", "status_fields"]
+[tool.setuptools.packages.find]
+include = ["utlis*", "status_fields*", "scan_engine*"]
+
+[tool.setuptools.package-data]
+scan_engine = ["*.yaml"]
 
 [project]
 name = "bbop"

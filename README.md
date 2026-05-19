@@ -32,6 +32,10 @@ BBOP processes multi-camera behavioral recordings through several stages:
 Raw Videos → Generate Caliberation files → sync 6 cameras → COM Tracking → s-DANNCE Pose → Sync with Miniscope data (processed separately, also included in this repository) → Loading with synced data
 ```
 
+BBOP is intended to provide the reusable preprocessing and data-access layer;
+project-specific post-processing analyses can live in separate analysis
+repositories that install BBOP as a dependency.
+
 **Run the complete pipeline tutorial:**
 ```bash
 jupyter demo/bbop_preprocess_demo.ipynb
